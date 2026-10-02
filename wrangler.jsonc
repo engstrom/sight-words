@@ -8,8 +8,7 @@
     {
       "binding": "DB",
       "database_name": "sight-words",
-      // Filled in by `wrangler d1 create sight-words`; local dev ignores it.
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "8674e769-487d-4c87-84b4-5ee902caa602"
     }
   ],
   "observability": { "enabled": true }
