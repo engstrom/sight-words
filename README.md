@@ -14,5 +14,3 @@ npm run deploy         # applies migrations to the real D1, then deploys
 ```
 
 Progress also lives in the browser under `localStorage["sightwords.v1"]`, so the app works offline and syncs when it's back. Grown-ups › Backup still saves and restores it as a file.
-
-The first version was hosted on GitHub Pages at https://engstrom.github.io/sight-words/, served from the `gh-pages` branch.
