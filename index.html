@@ -190,6 +190,20 @@ p { margin: 0 0 10px; }
 .add input { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
 .notice { background: var(--tile-new); border-radius: 12px; padding: 10px 14px; font-size: 15px; margin: 10px 0; }
 .danger { color: var(--miss); border-color: var(--miss); }
+#checks { margin-bottom: 22px; }
+#checks button { white-space: nowrap; }
+.gate {
+  border: 2px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink);
+  padding: 20px; width: min(360px, calc(100vw - 36px)); box-shadow: var(--shadow);
+}
+.gate::backdrop { background: rgba(18, 25, 38, .5); }
+.gate h2 { margin: 0 0 6px; font-size: 18px; color: var(--ink-soft); }
+.gate label { display: block; font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+.gate input {
+  display: block; width: 100%; font: inherit; font-size: 30px; font-weight: 700; text-align: center;
+  padding: 8px; margin-bottom: 16px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper); color: var(--ink);
+}
+.gate .big { font-size: 22px; padding: 12px; }
 .center { text-align: center; }
 .hidden { display: none !important; }
 
@@ -247,13 +261,27 @@ function freshState() {
   return {
     v: 1, updatedAt: Date.now(), order: TEACHER.slice(), custom: [], words,
     settings: { newPerDay: 3, sessionSize: 12, mode: "mic" },
-    stats: { stars: 0, streak: 0, lastDay: null, newDay: null, newCount: 0 }
+    stats: { stars: 0, streak: 0, lastDay: null, newDay: null, newCount: 0 },
+    checks: []
   };
 }
 function valid(s) { return s && s.v === 1 && Array.isArray(s.order) && s.words && s.settings && s.stats; }
+/* Fill in what older saves and backups don't have */
+function upgrade(s) {
+  if (!Array.isArray(s.custom)) s.custom = [];
+  s.checks = Array.isArray(s.checks) ? s.checks.filter(x => x && typeof x.word === "string") : [];
+  return s;
+}
 let state = null;
 try { const raw = localStorage.getItem(LS_KEY); if (raw) { const s = JSON.parse(raw); if (valid(s)) state = s; } } catch (e) {}
-if (!state) state = freshState();
+state = upgrade(state || freshState());
+
+/* Kid mode until a grown-up answers the gate. Not saved, so closing the app goes back to kid mode. */
+let grownUp = false;
+/* Misses the microphone scored in kid mode, newest first, for a grown-up to check */
+const CHECKS_MAX = 50;
+/* Times a silent listen restarts on its own before waiting for a tap */
+const QUIET_RETRIES = 2;
 
 function save() {
   state.updatedAt = Date.now();
@@ -360,6 +388,16 @@ function flipResult() {
   if (!toGood) say("This word is " + card().word + ".");
   renderPractice();
 }
+/* Put a kid-mode miss on the grown-up's "Check these" list, with the box and due date it had before.
+   A second miss on the same day keeps the first one's, so "He was right" undoes the whole day. */
+function noteMiss(word, heard, w) {
+  const t = today();
+  const i = state.checks.findIndex(x => x.word === word && x.day === t);
+  const item = i >= 0 ? state.checks.splice(i, 1)[0] : { word, day: t, b: w.b, d: w.d };
+  item.heard = heard || "";
+  state.checks.unshift(item);
+  if (state.checks.length > CHECKS_MAX) state.checks.length = CHECKS_MAX;
+}
 function commit() {
   const c = card();
   const w = state.words[c.word];
@@ -385,6 +423,7 @@ function commit() {
       state.stats.stars++; session.earned++;
     } else { state.stats.stars++; session.earned++; } // extra practice: no schedule change
   } else {
+    if (!grownUp) noteMiss(c.word, session.heard, w);
     w.w++;
     w.b = 1; w.d = t;
     if (!c.missed) c.missed = true;
@@ -407,7 +446,8 @@ function next() {
   introIfNew();
 }
 
-function listen() {
+/* `again` is the prompt kept up while the app listens again on its own in kid mode; a tap passes nothing */
+function listen(again) {
   if (!SR) { micBlocked = true; renderPractice(); return; }
   try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
   const c = card();
@@ -425,12 +465,15 @@ function listen() {
     if (matches(c.word, all)) { matched = true; try { rec.stop(); } catch (e) {} }
   };
   let gotAudio = false;
-  rec.onaudiostart = () => { gotAudio = true; setPrompt("Listening\u2026 read the word!"); };
+  let needsTap = false;
+  rec.onaudiostart = () => { gotAudio = true; setPrompt(again || "Listening\u2026 read the word!"); };
   rec.onsoundstart = () => setPrompt("I hear something\u2026");
   rec.onspeechstart = () => setPrompt("I hear you!");
   rec.onerror = (ev) => {
     errored = ev.error;
-    if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+    if (again && (ev.error === "not-allowed" || ev.error === "service-not-allowed")) {
+      needsTap = true; // the browser may not listen again without a tap; the mic itself was fine a moment ago
+    } else if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
       micBlocked = true;
       micNote = "The microphone is blocked here. Score with the buttons below, or open this page in Safari or Chrome and allow the microphone.";
     } else if (ev.error === "audio-capture") {
@@ -443,27 +486,52 @@ function listen() {
     session.listening = false; session.rec = null;
     clearTimeout(session.listenTimer); clearTimeout(session.audioTimer);
     if (screen !== "practice" || card() !== c || session.pending) return;
+    const quiet = gotAudio && (errored === "no-speech" || !errored);
     if (matched) setResult(true, heard);
+    else if (heard.trim() && !grownUp && !c.onceMore) {
+      // kid mode: a wrong word gets one more go before it counts as a miss
+      c.onceMore = true;
+      listenAgain("Try once more!");
+    }
     else if (heard.trim()) setResult(false, heard);
+    else if (quiet && !grownUp && !session.tapStop && (c.quiet || 0) < QUIET_RETRIES) {
+      // kid mode: hearing nothing costs nothing; listen again
+      c.quiet = (c.quiet || 0) + 1;
+      listenAgain("Read the word!");
+    }
     else {
-      if (gotAudio && (errored === "no-speech" || !errored)) session.prompt = "I didn't hear that. Tap and try again.";
+      if (needsTap) session.prompt = "Tap the microphone and read the word.";
+      else if (quiet) session.prompt = "I didn't hear that. Tap and try again.";
       renderPractice();
     }
   };
   try {
     rec.start();
-    session.rec = rec; session.listening = true; session.prompt = "Starting the microphone\u2026"; session.heard = "";
+    session.rec = rec; session.listening = true; session.prompt = again || "Starting the microphone\u2026"; session.heard = "";
+    session.tapStop = false;
+    if (!again) c.quiet = 0;
     session.listenTimer = setTimeout(() => { try { rec.stop(); } catch (e) {} }, 7000);
     session.audioTimer = setTimeout(() => {
       if (!gotAudio && session && session.rec === rec) {
         try { rec.abort(); } catch (e) {}
-        session.prompt = "The microphone isn\u2019t sending any sound. Grown-ups: try the microphone check.";
+        session.prompt = again ? "Tap the microphone and read the word." : "The microphone isn\u2019t sending any sound. Grown-ups: try the microphone check.";
       }
     }, 4000);
   } catch (e) {
-    micBlocked = true; micNote = "The microphone couldn't start here. Score with the buttons below.";
+    if (again) session.prompt = "Tap the microphone and read the word.";
+    else { micBlocked = true; micNote = "The microphone couldn't start here. Score with the buttons below."; }
   }
   renderPractice();
+}
+/* Kid mode: show the prompt, then listen again by itself, unless the child stopped the mic with a tap */
+function listenAgain(prompt) {
+  session.prompt = prompt;
+  renderPractice();
+  if (session.tapStop) return;
+  const s = session, c = card();
+  setTimeout(() => {
+    if (session === s && screen === "practice" && card() === c && !s.pending && !s.listening) listen(prompt);
+  }, 700);
 }
 function setPrompt(t) {
   if (!session) return;
@@ -522,7 +590,10 @@ function renderHome() {
     '<div class="legend"><span><i style="background:var(--tile-known)"></i>Known (' + c.k + ')</span><span><i style="background:var(--tile-learn)"></i>Learning (' + c.l + ')</span><span><i style="background:var(--tile-new)"></i>Not started (' + c.n + ')</span></div>';
   on("start", () => startSession(false));
   on("extra", () => startSession(true));
-  on("grown", () => { screen = "grownups"; render(); });
+  on("grown", () => {
+    if (grownUp) { screen = "grownups"; render(); }
+    else parentGate(() => { grownUp = true; screen = "grownups"; render(); });
+  });
 }
 
 function renderPractice() {
@@ -544,11 +615,16 @@ function renderPractice() {
     body = '<div class="mic-area"><button class="mic ' + (s.listening ? "listening" : "") + '" id="mic" aria-label="' + (s.listening ? "Stop listening" : "Tap, then read the word") + '">' + MIC + '</button>' +
       '<p class="prompt" aria-live="polite">' + esc(s.prompt || "Tap, then read the word") + '</p>' +
       '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
+  } else if (!grownUp) {
+    body = '<p class="prompt">Ask a grown-up to help</p>';
   } else {
     body = '<p class="prompt">Read the word out loud!</p>' + (micNote && state.settings.mode === "mic" ? '<div class="notice">' + esc(micNote) + '</div>' : "");
   }
   let grown;
-  if (s.pending) {
+  if (!grownUp) {
+    // kid mode: no scoring or override buttons; without the mic, a grown-up unlocks them here
+    grown = s.pending || useMic() ? "" : '<div class="grownup-row"><span>Grown-ups can score after answering a question.</span><button class="plain" id="unlock">Grown-up scoring</button></div>';
+  } else if (s.pending) {
     grown = '<div class="grownup-row"><span>Grown-up: did it hear him wrong?</span><button class="plain ' + (s.pending === "bad" ? "btn-good" : "btn-bad") + '" id="flip">' +
       (s.pending === "bad" ? "He got it right" : "He missed it") + '</button>' + (s.pending === "good" ? '<button class="plain" id="next">Next</button>' : "") + '</div>';
   } else {
@@ -558,12 +634,13 @@ function renderPractice() {
   app.innerHTML = topBar('<button class="link" id="quit">Stop</button>') +
     '<div class="progress"><div class="track"><div class="fill" style="width:' + pct + '%"></div></div><span>' + (doneCount + 1) + ' of ' + s.cards.length + '</span></div>' +
     wordSheet(c.word, { state: sheetState, verdict, tag }) + body + grown;
-  on("mic", () => { if (s.listening) { try { s.rec && s.rec.stop(); } catch (e) {} } else listen(); });
+  on("mic", () => { if (s.listening) { s.tapStop = true; try { s.rec && s.rec.stop(); } catch (e) {} } else listen(); });
   on("gotit", () => setResult(true, ""));
   on("notyet", () => setResult(false, ""));
   on("flip", flipResult);
   on("next", next);
   on("hear", () => say(c.word));
+  on("unlock", () => parentGate(() => { grownUp = true; renderPractice(); }));
   on("quit", () => { stopListening(); clearTimeout(s.timer); if (s.pending) commit(); session = null; screen = "home"; render(); });
 }
 
@@ -586,8 +663,13 @@ function renderGrown() {
     const custom = state.custom.indexOf(w) >= 0;
     return '<button class="chip ' + status(state.words[w]) + '" data-w="' + esc(w) + '">' + esc(w) + (custom ? '<span class="x" data-rm="' + esc(w) + '" aria-label="Remove ' + esc(w) + '">\u00D7</span>' : "") + '</button>';
   }).join("");
+  const checks = state.checks.map((it, i) =>
+    '<div class="setting"><div class="label"><b style="font-size:24px">' + esc(it.word) + '</b><small>' + dayLabel(it.day) + ' · ' +
+      (it.heard ? 'heard “' + esc(it.heard.trim()) + '”' : "heard nothing") + '</small></div>' +
+    '<div class="row"><button class="plain btn-good" data-right="' + i + '">He was right</button><button class="plain" data-dismiss="' + i + '">Dismiss</button></div></div>').join("");
   app.innerHTML = topBar('<button class="link" id="back">Done</button>') +
-    '<h1>Grown-ups</h1>' +
+    '<div class="bar"><h1>Grown-ups</h1><button class="plain" id="kidmode">Back to kid mode</button></div>' +
+    (checks ? '<h2>Check these</h2><p class="muted">The microphone marked these wrong. If he read one right, “He was right” undoes the miss and gives the star.</p><div id="checks">' + checks + '</div>' : "") +
     (STANDALONE && !SR ? '<div class="notice">This Home Screen app can’t listen for speech, so it scores with the buttons. To use the microphone, open <b>' + esc(location.host + location.pathname.replace(/index\.html$/, "")) + '</b> in Safari instead. Safari keeps its own progress, separate from this app: use Back up progress here and Restore progress there to move it.</div>' : "") +
     '<p class="muted">Each word he reads right waits longer before it comes back: 1 day, then 2, 4, 8, 16, and 32. A miss sends it back to tomorrow. After three good days in a row a word counts as known.</p>' +
     '<div class="setting"><div class="label">New words per day<small>Added in the order on the teacher\u2019s list</small></div><div class="stepper"><button id="nd-" aria-label="Fewer">\u2212</button><output>' + st.newPerDay + '</output><button id="nd+" aria-label="More">+</button></div></div>' +
@@ -614,6 +696,25 @@ function renderGrown() {
   on("m-mic", () => { st.mode = "mic"; save(); renderGrown(); });
   on("m-btn", () => { st.mode = "buttons"; save(); renderGrown(); });
   on("back", () => { screen = "home"; render(); });
+  on("kidmode", () => { grownUp = false; screen = "home"; render(); });
+  const checkList = document.getElementById("checks");
+  if (checkList) checkList.addEventListener("click", e => {
+    const right = e.target.closest("[data-right]"), dismiss = e.target.closest("[data-dismiss]");
+    if (!right && !dismiss) return;
+    const i = Number((right || dismiss).getAttribute(right ? "data-right" : "data-dismiss"));
+    const it = state.checks[i];
+    if (right) {
+      const w = state.words[it.word];
+      if (w) {
+        // back to the box and due date from before the miss, unless he has read it right since (a miss leaves box 1)
+        if (w.b <= 1) { w.b = it.b; w.d = it.d; }
+        w.w = Math.max(0, w.w - 1); w.r++;
+      }
+      state.stats.stars++;
+    }
+    state.checks.splice(i, 1);
+    save(); renderGrown();
+  });
   on("addbtn", addWords);
   on("dspeech", diagSpeech);
   on("dlevel", diagLevel);
@@ -721,8 +822,7 @@ async function restoreProgress(file) {
   }
   const when = typeof s.updatedAt === "number" ? " from " + new Date(s.updatedAt).toLocaleDateString() : "";
   if (!confirm("Replace the progress on this device with the backup" + when + "? This can’t be undone.")) return;
-  if (!Array.isArray(s.custom)) s.custom = [];
-  state = s;
+  state = upgrade(s);
   save(); renderGrown();
   document.getElementById("bkmsg").textContent = "Progress restored.";
 }
@@ -746,11 +846,36 @@ function addWords() {
   save(); renderGrown();
 }
 
+function dayLabel(d) {
+  const t = today();
+  if (d === t) return "Today";
+  if (d === t - 1) return "Yesterday";
+  return new Date(d * 86400000).toLocaleDateString(undefined, { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+}
+/* Parent gate: a two-digit sum. Right calls onPass; wrong or cancel just closes. */
+function parentGate(onPass) {
+  const a = 10 + Math.floor(Math.random() * 90), b = 10 + Math.floor(Math.random() * 90);
+  const dlg = document.createElement("dialog");
+  dlg.className = "gate";
+  dlg.innerHTML = '<form method="dialog"><h2>For grown-ups</h2>' +
+    '<label for="gatein">What is ' + a + ' + ' + b + '?</label>' +
+    '<input id="gatein" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" autofocus>' +
+    '<div class="row"><button type="button" class="plain" id="gateno">Cancel</button><button class="big" value="ok">OK</button></div></form>';
+  document.body.appendChild(dlg);
+  dlg.querySelector("#gateno").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => {
+    const answer = dlg.querySelector("input").value.trim();
+    const pass = dlg.returnValue === "ok" && /^\d+$/.test(answer) && Number(answer) === a + b;
+    dlg.remove();
+    if (pass) onPass();
+  });
+  dlg.showModal();
+}
 function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); }
 function render() {
   if (screen === "practice" && session) renderPractice();
   else if (screen === "done" && session) renderDone();
-  else if (screen === "grownups") renderGrown();
+  else if (screen === "grownups" && grownUp) renderGrown();
   else { screen = "home"; renderHome(); }
   window.scrollTo(0, 0);
 }
