@@ -1,0 +1,11 @@
+{
+  "name": "sight-words",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler d1 migrations apply sight-words --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply sight-words --remote && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.146.0"
+  }
+}

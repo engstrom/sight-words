@@ -191,6 +191,7 @@ p { margin: 0 0 10px; }
 .notice { background: var(--tile-new); border-radius: 12px; padding: 10px 14px; font-size: 15px; margin: 10px 0; }
 .danger { color: var(--miss); border-color: var(--miss); }
 #checks { margin-bottom: 22px; }
+.synccode { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 700; letter-spacing: .04em; margin: 8px 0 12px; -webkit-user-select: all; user-select: all; }
 #checks button { white-space: nowrap; }
 .gate {
   border: 2px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink);
@@ -286,6 +287,107 @@ const QUIET_RETRIES = 2;
 function save() {
   state.updatedAt = Date.now();
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  if (sync) { sync.dirty = true; edits++; storeSync(); clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, SYNC_DELAY); }
+}
+
+/* ---------- Sync ---------- */
+/* Devices share progress through /api/sync under a family code. A device remembers the server version
+   its progress is based on; a write on top of an older version is refused and the device takes what
+   the server has instead, so whichever device saved first wins. */
+const SYNC_KEY = "sightwords.sync";
+const SYNC_DELAY = 2000;          // after the last change
+const SYNC_RETRY = 60000;         // after a failed attempt with changes still to send
+const CODE_RE = /^[0-9A-HJKMNP-TV-Z]{20}$/;
+let sync = null;                  // { code, version, dirty }
+try { const s = JSON.parse(localStorage.getItem(SYNC_KEY)); if (s && CODE_RE.test(s.code)) sync = s; } catch (e) {}
+let syncBusy = false, syncAgain = false, syncTimer = null, syncedAt = null, syncError = "", edits = 0;
+
+function storeSync() {
+  try { if (sync) localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); else localStorage.removeItem(SYNC_KEY); } catch (e) {}
+}
+function newCode() {
+  const A = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32: no I, L, O or U
+  return Array.from(crypto.getRandomValues(new Uint8Array(20)), x => A[x & 31]).join("");
+}
+function showCode(c) { return c.match(/.{4}/g).join("-"); }
+function readCode(s) {
+  s = String(s).toUpperCase().replace(/[^0-9A-Z]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  return CODE_RE.test(s) ? s : null;
+}
+function syncLine() {
+  if (!sync) return "";
+  if (syncError) return syncError;
+  if (sync.dirty) return "Waiting to sync…";
+  return syncedAt ? "Synced at " + new Date(syncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." : "Syncing…";
+}
+function showSyncLine() { const el = document.getElementById("syncmsg"); if (el) el.textContent = syncLine(); }
+
+/* Take the server's copy in place of this device's */
+function adopt(remote) {
+  sync.version = remote.version; sync.dirty = false;
+  if (!valid(remote.data)) { sync.dirty = true; return; } // nothing usable there: write ours over it
+  state = upgrade(remote.data);
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  if (screen === "home") renderHome();
+  else if (screen === "grownups" && grownUp) renderGrown();
+}
+
+/* Send this device's changes, or fetch the server's if there are none. `leaving`: the app is going to the background. */
+async function syncNow(leaving) {
+  if (!sync) return;
+  if (syncBusy) { syncAgain = true; return; }
+  syncBusy = true; clearTimeout(syncTimer);
+  const code = sync.code, pushing = sync.dirty, sentEdits = edits;
+  let failed = false;
+  try {
+    const res = pushing
+      ? await fetch("/api/sync/" + code, { method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ version: sync.version, data: state }), keepalive: !!leaving })
+      : await fetch("/api/sync/" + code, { cache: "no-store" });
+    const body = await res.json().catch(() => null);
+    if (!sync || sync.code !== code) return; // turned off or changed while waiting
+    syncError = "";
+    if (res.ok && pushing) { sync.version = body.version; if (edits === sentEdits) sync.dirty = false; }
+    else if (res.ok || res.status === 409) { if (body.version !== sync.version) adopt(body); }
+    else if (res.status === 404) { sync.version = 0; sync.dirty = true; } // the server has nothing under this code: put ours there
+    else { failed = true; syncError = "Sync isn’t working right now (the server said " + res.status + "). Progress is still saved here."; }
+    if (!failed) syncedAt = Date.now();
+  } catch (e) {
+    failed = true;
+    if (sync) syncError = "Offline. Progress is saved here and will sync when this device is back online.";
+  } finally {
+    syncBusy = false;
+    storeSync(); showSyncLine();
+    if (sync && sync.dirty && !failed) syncAgain = true;
+    if (syncAgain) { syncAgain = false; syncNow(); }
+    else if (failed && sync && sync.dirty) syncTimer = setTimeout(syncNow, SYNC_RETRY);
+  }
+}
+function turnOnSync() {
+  sync = { code: newCode(), version: 0, dirty: true };
+  syncError = ""; syncedAt = null;
+  save(); renderGrown(); syncNow();
+}
+async function joinSync() {
+  const msg = document.getElementById("syncmsg");
+  const code = readCode(document.getElementById("syncin").value);
+  if (!code) { msg.textContent = "That isn’t a sync code. It has 20 letters and numbers, like ABCD-EFGH-JKMN-PQRS-TV12."; return; }
+  msg.textContent = "Looking it up…";
+  let res = null, body = null;
+  try { res = await fetch("/api/sync/" + code, { cache: "no-store" }); body = await res.json(); } catch (e) {}
+  if (!res) { msg.textContent = "Couldn’t reach the sync server. Check the internet connection and try again."; return; }
+  if (res.status === 404) { msg.textContent = "Nothing is saved under that code. Check it against the other device."; return; }
+  if (!res.ok || !body || !valid(body.data)) { msg.textContent = "Sync didn’t work (the server said " + res.status + "). Try again."; return; }
+  const stars = body.data.stats.stars || 0;
+  if (!confirm("Replace the progress on this device with the synced progress (" + stars + (stars === 1 ? " star" : " stars") + ")? This can’t be undone.")) { msg.textContent = ""; return; }
+  sync = { code, version: 0, dirty: false };
+  syncError = ""; syncedAt = Date.now();
+  adopt(body); storeSync();
+}
+function turnOffSync() {
+  if (!confirm("Stop syncing on this device? Its progress stays here, and the other devices keep syncing.")) return;
+  sync = null; syncError = ""; syncedAt = null;
+  clearTimeout(syncTimer); storeSync(); renderGrown();
 }
 
 /* ---------- Speech ---------- */
@@ -401,6 +503,7 @@ function noteMiss(word, heard, w) {
 function commit() {
   const c = card();
   const w = state.words[c.word];
+  if (!w) return; // removed on another device while this card was up
   const t = today();
   // daily streak and new-word counter
   if (state.stats.lastDay !== t) {
@@ -670,7 +773,7 @@ function renderGrown() {
   app.innerHTML = topBar('<button class="link" id="back">Done</button>') +
     '<div class="bar"><h1>Grown-ups</h1><button class="plain" id="kidmode">Back to kid mode</button></div>' +
     (checks ? '<h2>Check these</h2><p class="muted">The microphone marked these wrong. If he read one right, “He was right” undoes the miss and gives the star.</p><div id="checks">' + checks + '</div>' : "") +
-    (STANDALONE && !SR ? '<div class="notice">This Home Screen app can’t listen for speech, so it scores with the buttons. To use the microphone, open <b>' + esc(location.host + location.pathname.replace(/index\.html$/, "")) + '</b> in Safari instead. Safari keeps its own progress, separate from this app: use Back up progress here and Restore progress there to move it.</div>' : "") +
+    (STANDALONE && !SR ? '<div class="notice">This Home Screen app can’t listen for speech, so it scores with the buttons. To use the microphone, open <b>' + esc(location.host + location.pathname.replace(/index\.html$/, "")) + '</b> in Safari instead. Safari keeps its own progress, separate from this app: turn on Sync below to share it.</div>' : "") +
     '<p class="muted">Each word he reads right waits longer before it comes back: 1 day, then 2, 4, 8, 16, and 32. A miss sends it back to tomorrow. After three good days in a row a word counts as known.</p>' +
     '<div class="setting"><div class="label">New words per day<small>Added in the order on the teacher\u2019s list</small></div><div class="stepper"><button id="nd-" aria-label="Fewer">\u2212</button><output>' + st.newPerDay + '</output><button id="nd+" aria-label="More">+</button></div></div>' +
     '<div class="setting"><div class="label">Words per practice</div><div class="stepper"><button id="ss-" aria-label="Fewer">\u2212</button><output>' + st.sessionSize + '</output><button id="ss+" aria-label="More">+</button></div></div>' +
@@ -684,7 +787,15 @@ function renderGrown() {
     '<h2>Microphone check</h2><p class="muted">If the mic turns red but never hears him, run both checks and look at what they report.</p>' +
     '<div class="row"><button class="plain" id="dspeech">Check speech</button><button class="plain" id="dlevel">Check sound level</button></div>' +
     '<pre id="diag" class="notice" style="white-space:pre-wrap;font-size:13px;min-height:3em">Not run yet.</pre>' +
-    '<h2>Backup</h2><p class="muted">Save progress to a file, or replace it with a file saved before, for example to move it to another iPad.</p>' +
+    '<h2>Sync</h2>' + (sync
+      ? '<p class="muted">This device shares progress with every device that has this code. To add one, open Grown-ups there and enter the code.</p>' +
+        '<p class="synccode">' + showCode(sync.code) + '</p>' +
+        '<div class="row"><button class="plain" id="synccopy">Copy code</button><button class="plain" id="syncoff">Stop syncing here</button></div>'
+      : '<p class="muted">Share progress between devices, or between Safari and the Home Screen app. Turn it on where the progress you want to keep is, then enter its code on the others.</p>' +
+        '<button class="plain" id="syncon">Turn on sync</button>' +
+        '<div class="add"><input id="syncin" placeholder="Code from another device" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="plain" id="syncjoin">Join</button></div>') +
+    '<p class="muted" id="syncmsg" role="status" style="margin-top:10px">' + esc(syncLine()) + '</p>' +
+    '<h2>Backup</h2><p class="muted">Save progress to a file, or replace it with a file saved before.</p>' +
     '<div class="row"><button class="plain" id="backup">Back up progress</button><button class="plain" id="restore">Restore progress</button></div>' +
     '<input type="file" id="restorefile" class="hidden" accept=".json,application/json">' +
     '<p class="muted" id="bkmsg" role="status" style="margin-top:10px"></p>' +
@@ -718,6 +829,15 @@ function renderGrown() {
   on("addbtn", addWords);
   on("dspeech", diagSpeech);
   on("dlevel", diagLevel);
+  on("syncon", turnOnSync);
+  on("syncjoin", joinSync);
+  on("syncoff", turnOffSync);
+  on("synccopy", () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(showCode(sync.code))
+      .then(() => { document.getElementById("syncmsg").textContent = "Code copied."; }, () => {});
+  });
+  const syncIn = document.getElementById("syncin");
+  if (syncIn) syncIn.addEventListener("keydown", e => { if (e.key === "Enter") joinSync(); });
   on("backup", backupProgress);
   on("restore", () => document.getElementById("restorefile").click());
   document.getElementById("restorefile").addEventListener("change", e => {
@@ -743,7 +863,7 @@ function renderGrown() {
     save(); renderGrown();
   });
   on("reset", () => {
-    if (!confirm("Reset all progress and stars? This can\u2019t be undone.")) return;
+    if (!confirm("Reset all progress and stars" + (sync ? " on every synced device" : "") + "? This can\u2019t be undone.")) return;
     const keep = { order: state.order, custom: state.custom, settings: state.settings };
     state = freshState();
     keep.custom.forEach(w => { if (!state.words[w]) state.words[w] = { b: 0, d: 0, r: 0, w: 0 }; });
@@ -821,7 +941,7 @@ async function restoreProgress(file) {
     return;
   }
   const when = typeof s.updatedAt === "number" ? " from " + new Date(s.updatedAt).toLocaleDateString() : "";
-  if (!confirm("Replace the progress on this device with the backup" + when + "? This can’t be undone.")) return;
+  if (!confirm("Replace the progress on this device" + (sync ? " and every device it syncs with" : "") + " with the backup" + when + "? This can’t be undone.")) return;
   state = upgrade(s);
   save(); renderGrown();
   document.getElementById("bkmsg").textContent = "Progress restored.";
@@ -881,6 +1001,12 @@ function render() {
 }
 render();
 if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
+syncNow();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") syncNow();
+  else if (sync && sync.dirty) syncNow(true);
+});
+window.addEventListener("online", () => syncNow());
 })();
 </script>
 </body>
