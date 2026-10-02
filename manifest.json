@@ -1,0 +1,14 @@
+{
+  "name": "Sight Words",
+  "short_name": "Sight Words",
+  "description": "Sight-word reading practice with spaced repetition.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FDFDF6",
+  "theme_color": "#FDFDF6",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
