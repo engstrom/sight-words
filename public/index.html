@@ -134,6 +134,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--rule-blue);
 .mic svg { width: 48px; height: 48px; }
 .mic:active { transform: translateY(2px); box-shadow: 0 3px 0 #C99A16; }
 .mic.listening { background: var(--rule-red); color: #fff; box-shadow: 0 5px 0 #9E3E33; }
+.mic-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
+.mic-row .mic { grid-column: 2; }
+.help {
+  grid-column: 3; justify-self: start; margin-left: 22px;
+  width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--line); background: var(--card);
+  color: var(--ink-soft); font-size: 34px; font-weight: 700; line-height: 1; box-shadow: var(--shadow);
+}
+.help:active { transform: translateY(2px); box-shadow: none; }
 .mic.listening::after {
   content: ""; position: absolute; inset: -10px; border-radius: 50%;
   border: 4px solid var(--rule-red); animation: pulse 1.2s ease-out infinite;
@@ -283,6 +291,9 @@ let grownUp = false;
 const CHECKS_MAX = 50;
 /* Times a silent listen restarts on its own before waiting for a tap */
 const QUIET_RETRIES = 2;
+/* Times a word he asked for help with ("?") comes back later in the same session: once, so he reads
+   it himself right after hearing it. After that it waits until tomorrow. */
+const HELP_REASKS = 1;
 
 function save() {
   state.updatedAt = Date.now();
@@ -473,6 +484,14 @@ function introIfNew() {
 }
 
 /* Record an answer, but don't commit until we move on, so a grown-up can correct it */
+/* "?": he doesn't know the word. Read it to him and let him move on without trying. */
+function askForHelp() {
+  session.pending = "help"; session.heard = ""; session.prompt = "";
+  clearTimeout(session.timer);
+  stopListening();
+  say("This word is " + card().word + ".");
+  renderPractice();
+}
 function setResult(correct, heard) {
   stopListening();
   const c = card();
@@ -525,6 +544,15 @@ function commit() {
       if (before !== "k" && status(w) === "k") session.moved++;
       state.stats.stars++; session.earned++;
     } else { state.stats.stars++; session.earned++; } // extra practice: no schedule change
+  } else if (session.pending === "help") {
+    // he didn't know it: back to box 1 like a miss, but due tomorrow, and not a mic mistake to check
+    w.w++;
+    w.b = 1; w.d = t + 1;
+    c.missed = true;
+    if (session.cards.filter(x => x.word === c.word).length <= HELP_REASKS) {
+      const pos = Math.min(session.cards.length, session.i + 4);
+      session.cards.splice(pos, 0, { word: c.word, isNew: false, missed: true, tries: 1 });
+    }
   } else {
     if (!grownUp) noteMiss(c.word, session.heard, w);
     w.w++;
@@ -708,14 +736,15 @@ function renderPractice() {
   if (s.pending === "good") { sheetState = "good"; verdict = "Yes!"; }
   if (s.pending === "bad") { sheetState = "bad"; verdict = "Not yet"; }
   let body = "";
-  if (s.pending === "bad") {
+  if (s.pending === "bad" || s.pending === "help") {
     body = '<div class="mic-area"><p class="prompt">This word is \u201C' + esc(c.word) + '\u201D. Say it with me!</p>' +
       '<div class="row" style="width:100%"><button class="plain" id="hear">Hear it again</button><button class="big" id="next" style="font-size:22px;padding:12px">Next</button></div>' +
       '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
   } else if (s.pending === "good") {
     body = '<div class="mic-area"><p class="prompt">You got a star!</p><p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
   } else if (useMic()) {
-    body = '<div class="mic-area"><button class="mic ' + (s.listening ? "listening" : "") + '" id="mic" aria-label="' + (s.listening ? "Stop listening" : "Tap, then read the word") + '">' + MIC + '</button>' +
+    body = '<div class="mic-area"><div class="mic-row"><button class="mic ' + (s.listening ? "listening" : "") + '" id="mic" aria-label="' + (s.listening ? "Stop listening" : "Tap, then read the word") + '">' + MIC + '</button>' +
+      '<button class="help" id="help" aria-label="I don’t know this word">?</button></div>' +
       '<p class="prompt" aria-live="polite">' + esc(s.prompt || "Tap, then read the word") + '</p>' +
       '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
   } else if (!grownUp) {
@@ -727,6 +756,8 @@ function renderPractice() {
   if (!grownUp) {
     // kid mode: no scoring or override buttons; without the mic, a grown-up unlocks them here
     grown = s.pending || useMic() ? "" : '<div class="grownup-row"><span>Grown-ups can score after answering a question.</span><button class="plain" id="unlock">Grown-up scoring</button></div>';
+  } else if (s.pending === "help") {
+    grown = ""; // he asked; there is no score to override
   } else if (s.pending) {
     grown = '<div class="grownup-row"><span>Grown-up: did it hear him wrong?</span><button class="plain ' + (s.pending === "bad" ? "btn-good" : "btn-bad") + '" id="flip">' +
       (s.pending === "bad" ? "He got it right" : "He missed it") + '</button>' + (s.pending === "good" ? '<button class="plain" id="next">Next</button>' : "") + '</div>';
@@ -743,6 +774,7 @@ function renderPractice() {
   on("flip", flipResult);
   on("next", next);
   on("hear", () => say(c.word));
+  on("help", askForHelp);
   on("unlock", () => parentGate(() => { grownUp = true; renderPractice(); }));
   on("quit", () => { stopListening(); clearTimeout(s.timer); if (s.pending) commit(); session = null; screen = "home"; render(); });
 }
