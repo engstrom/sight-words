@@ -1,6 +1,6 @@
 # Sight Words
 
-A kid's sight-word reading practice app for the iPad: one page (`public/index.html`) plus a small Cloudflare Worker that syncs progress between devices.
+A kid's sight-word reading practice app for the iPad: one page (`public/index.html`) plus a small Cloudflare Worker that syncs progress between devices. Live at https://sight-words.formworkstudios.workers.dev.
 
 - `public/` is the site, served as static files: the app, its service worker (network first), manifest and icons.
 - `src/worker.js` answers `/api/sync/CODE` and nothing else. There are no accounts: a family's progress is one row in D1 keyed by a random 20-character code, which Grown-ups › Sync shows and the other devices enter. A write names the version it was made on top of; a stale one is refused and that device takes the stored copy instead.

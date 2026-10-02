@@ -478,9 +478,12 @@ function startSession(extra) {
   introIfNew();
 }
 function card() { return session.cards[session.i]; }
+/* A word he has never practised, the first time it comes up: the app reads it to him, then he reads it back */
+function isIntro(c) { return c && c.isNew && c.tries === 0 && !c.missed; }
+function introText(c) { return "Here’s a new word: “" + c.word + "”. Now you read it!"; }
 function introIfNew() {
   const c = card();
-  if (c && c.isNew && c.tries === 0 && !c.missed) setTimeout(() => say("New word. This word is " + c.word + "."), 250);
+  if (isIntro(c)) setTimeout(() => say("Here's a new word: " + c.word + ". Now you read it!"), 250);
 }
 
 /* Record an answer, but don't commit until we move on, so a grown-up can correct it */
@@ -745,12 +748,12 @@ function renderPractice() {
   } else if (useMic()) {
     body = '<div class="mic-area"><div class="mic-row"><button class="mic ' + (s.listening ? "listening" : "") + '" id="mic" aria-label="' + (s.listening ? "Stop listening" : "Tap, then read the word") + '">' + MIC + '</button>' +
       '<button class="help" id="help" aria-label="I don’t know this word">?</button></div>' +
-      '<p class="prompt" aria-live="polite">' + esc(s.prompt || "Tap, then read the word") + '</p>' +
+      '<p class="prompt" aria-live="polite">' + esc(s.prompt || (isIntro(c) ? introText(c) : "Tap, then read the word")) + '</p>' +
       '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
   } else if (!grownUp) {
     body = '<p class="prompt">Ask a grown-up to help</p>';
   } else {
-    body = '<p class="prompt">Read the word out loud!</p>' + (micNote && state.settings.mode === "mic" ? '<div class="notice">' + esc(micNote) + '</div>' : "");
+    body = '<p class="prompt">' + esc(isIntro(c) ? introText(c) : "Read the word out loud!") + '</p>' + (micNote && state.settings.mode === "mic" ? '<div class="notice">' + esc(micNote) + '</div>' : "");
   }
   let grown;
   if (!grownUp) {
