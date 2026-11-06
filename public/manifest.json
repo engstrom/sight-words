@@ -1,7 +1,7 @@
 {
   "name": "Sight Words",
   "short_name": "Sight Words",
-  "description": "Sight-word reading practice with spaced repetition.",
+  "description": "Quiz a child on sight words from your phone, with spaced repetition and progress shared between grown-ups.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
