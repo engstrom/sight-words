@@ -27,7 +27,11 @@
   --pencil: #F2BE2E;
   --pencil-ink: #3A2A00;
   --leaf: #2F9E58;
+  --leaf-edge: #1F7440;
+  --on-leaf: #FFFFFF;
   --miss: #D9534A;
+  --miss-edge: #A63A32;
+  --on-miss: #FFFFFF;
   --line: #DCE3EE;
   --tile-new: #E7EBF2;
   --tile-learn: #F7D774;
@@ -39,7 +43,8 @@
   :root:not([data-theme="light"]) {
     --paper: #18202E; --card: #212B3C; --ink: #EEF1F6; --ink-soft: #A7B1C4;
     --rule-blue: #4F72A3; --rule-red: #B45246; --pencil: #F2BE2E; --pencil-ink: #2A1F00;
-    --leaf: #4CC077; --miss: #F07167; --line: #33405A;
+    --leaf: #4CC077; --leaf-edge: #2E8A50; --on-leaf: #0B2615;
+    --miss: #F07167; --miss-edge: #B4483F; --on-miss: #2A0B08; --line: #33405A;
     --tile-new: #2E3A50; --tile-learn: #C9A63E; --tile-known: #3E9C61;
     --shadow: 0 2px 0 #121926; color-scheme: dark;
   }
@@ -47,7 +52,8 @@
 :root[data-theme="dark"] {
   --paper: #18202E; --card: #212B3C; --ink: #EEF1F6; --ink-soft: #A7B1C4;
   --rule-blue: #4F72A3; --rule-red: #B45246; --pencil: #F2BE2E; --pencil-ink: #2A1F00;
-  --leaf: #4CC077; --miss: #F07167; --line: #33405A;
+  --leaf: #4CC077; --leaf-edge: #2E8A50; --on-leaf: #0B2615;
+  --miss: #F07167; --miss-edge: #B4483F; --on-miss: #2A0B08; --line: #33405A;
   --tile-new: #2E3A50; --tile-learn: #C9A63E; --tile-known: #3E9C61;
   --shadow: 0 2px 0 #121926; color-scheme: dark;
 }
@@ -61,12 +67,13 @@ body {
   font-size: 18px; line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
 }
-button { font: inherit; color: inherit; cursor: pointer; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
 button:focus-visible, input:focus-visible { outline: 3px solid var(--rule-blue); outline-offset: 2px; }
 .wrap { max-width: 640px; margin: 0 auto; padding: 14px 18px 32px; }
 
 /* Top bar */
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.bar-right { display: flex; gap: 14px; }
 .stars { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 20px; }
 .stars svg { width: 26px; height: 26px; }
 .streak { color: var(--ink-soft); font-size: 15px; font-weight: 400; margin-left: 10px; }
@@ -81,6 +88,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--rule-blue);
   text-align: center;
   transition: border-color .2s;
 }
+.sheet.quiz { padding: 58px 16px 52px; }
 .sheet::before { /* red margin line, like primary writing paper */
   content: ""; position: absolute; top: 0; bottom: 0; left: 30px; width: 2px; background: var(--rule-red); opacity: .35;
 }
@@ -125,40 +133,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--rule-blue);
 .row { display: flex; gap: 10px; }
 .row > * { flex: 1; }
 
-.mic-area { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.mic {
-  width: 112px; height: 112px; border-radius: 50%; border: 0;
-  background: var(--pencil); color: var(--pencil-ink); display: grid; place-items: center;
-  box-shadow: 0 5px 0 #C99A16; position: relative;
-}
-.mic svg { width: 48px; height: 48px; }
-.mic:active { transform: translateY(2px); box-shadow: 0 3px 0 #C99A16; }
-.mic.listening { background: var(--rule-red); color: #fff; box-shadow: 0 5px 0 #9E3E33; }
-.mic-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
-.mic-row .mic { grid-column: 2; }
-.help {
-  grid-column: 3; justify-self: start; margin-left: 22px;
-  width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--line); background: var(--card);
-  color: var(--ink-soft); font-size: 34px; font-weight: 700; line-height: 1; box-shadow: var(--shadow);
-}
-.help:active { transform: translateY(2px); box-shadow: none; }
-.mic.listening::after {
-  content: ""; position: absolute; inset: -10px; border-radius: 50%;
-  border: 4px solid var(--rule-red); animation: pulse 1.2s ease-out infinite;
-}
-@keyframes pulse { from { transform: scale(.9); opacity: .9; } to { transform: scale(1.25); opacity: 0; } }
-.prompt { font-size: 20px; font-weight: 700; text-align: center; min-height: 1.5em; }
-.heard { color: var(--ink-soft); font-size: 15px; text-align: center; min-height: 1.4em; }
-
-.grownup-row {
-  margin-top: 26px; padding-top: 14px; border-top: 2px dashed var(--line);
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
-}
-.grownup-row span { color: var(--ink-soft); font-size: 15px; width: 100%; text-align: center; }
-.grownup-row button { flex: 1; min-width: 120px; padding: 10px; font-size: 16px; }
-.grownup-row.primary button { font-size: 22px; padding: 16px; }
-.btn-good { border-color: var(--leaf) !important; color: var(--leaf); }
-.btn-bad { border-color: var(--miss) !important; color: var(--miss); }
+/* The grown-up's answer buttons, under the word where thumbs are */
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ans { border: 0; border-radius: 18px; font-size: 26px; font-weight: 700; min-height: 84px; padding: 12px; }
+.ans.right { background: var(--leaf); color: var(--on-leaf); box-shadow: 0 4px 0 var(--leaf-edge); }
+.ans.wrong { background: var(--miss); color: var(--on-miss); box-shadow: 0 4px 0 var(--miss-edge); }
+.ans.skip { grid-column: 1 / -1; min-height: 56px; font-size: 20px; background: var(--card); border: 2px solid var(--line); color: var(--ink-soft); box-shadow: var(--shadow); }
+.ans.next { background: var(--pencil); color: var(--pencil-ink); box-shadow: 0 4px 0 #C99A16; }
+.ans.hear { background: var(--card); border: 2px solid var(--line); box-shadow: var(--shadow); font-size: 22px; }
+.ans:active { transform: translateY(2px); box-shadow: none; }
+.prompt { font-size: 20px; font-weight: 700; text-align: center; min-height: 1.5em; margin-bottom: 14px; }
 
 .progress { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 16px; }
 .progress .track { flex: 1; height: 10px; background: var(--tile-new); border-radius: 999px; overflow: hidden; }
@@ -169,23 +153,24 @@ h1 { font-size: 30px; line-height: 1.2; margin: 6px 0 4px; }
 h2 { font-size: 22px; margin: 28px 0 8px; }
 p { margin: 0 0 10px; }
 .muted { color: var(--ink-soft); }
+.lead { font-size: 20px; font-weight: 700; }
 .tiles { display: grid; grid-template-columns: repeat(25, 1fr); gap: 3px; margin: 10px 0 6px; }
 .tiles b { aspect-ratio: 1; border-radius: 3px; background: var(--tile-new); }
 .tiles b.l { background: var(--tile-learn); }
 .tiles b.k { background: var(--tile-known); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--ink-soft); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.log { list-style: none; padding: 0; margin: 0; }
+.log li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.log li span:last-child { color: var(--ink-soft); white-space: nowrap; }
 
-/* Grown-ups */
+/* Settings */
 .setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .setting .label { flex: 1 1 180px; }
 .setting .label small { display: block; color: var(--ink-soft); font-size: 14px; }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .stepper button { width: 42px; height: 42px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); font-size: 22px; font-weight: 700; }
 .stepper output { min-width: 2ch; text-align: center; font-weight: 700; font-size: 20px; }
-.seg { display: flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
-.seg button { border: 0; background: var(--card); padding: 9px 12px; font-size: 15px; font-weight: 700; }
-.seg button[aria-pressed="true"] { background: var(--pencil); color: var(--pencil-ink); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   border: 2px solid transparent; background: var(--tile-new); border-radius: 10px;
@@ -195,29 +180,23 @@ p { margin: 0 0 10px; }
 .chip.k { background: var(--tile-known); color: #fff; }
 .chip .x { margin-left: 6px; opacity: .6; font-weight: 400; }
 .add { display: flex; gap: 8px; margin-top: 10px; }
-.add input { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.add input, .field { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+.field { display: block; width: 100%; margin: 4px 0 14px; }
+label.f { display: block; font-weight: 700; }
 .notice { background: var(--tile-new); border-radius: 12px; padding: 10px 14px; font-size: 15px; margin: 10px 0; }
 .danger { color: var(--miss); border-color: var(--miss); }
-#checks { margin-bottom: 22px; }
-.synccode { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 700; letter-spacing: .04em; margin: 8px 0 12px; -webkit-user-select: all; user-select: all; }
-#checks button { white-space: nowrap; }
-.gate {
+.synccode { font-family: ui-monospace, Menlo, monospace; font-size: 20px; font-weight: 700; letter-spacing: .04em; margin: 8px 0 12px; -webkit-user-select: all; user-select: all; }
+.dlg {
   border: 2px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink);
   padding: 20px; width: min(360px, calc(100vw - 36px)); box-shadow: var(--shadow);
 }
-.gate::backdrop { background: rgba(18, 25, 38, .5); }
-.gate h2 { margin: 0 0 6px; font-size: 18px; color: var(--ink-soft); }
-.gate label { display: block; font-size: 26px; font-weight: 700; margin-bottom: 12px; }
-.gate input {
-  display: block; width: 100%; font: inherit; font-size: 30px; font-weight: 700; text-align: center;
-  padding: 8px; margin-bottom: 16px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper); color: var(--ink);
-}
-.gate .big { font-size: 22px; padding: 12px; }
+.dlg::backdrop { background: rgba(18, 25, 38, .5); }
+.dlg h2 { margin: 0 0 6px; font-size: 22px; }
+.dlg .big { font-size: 22px; padding: 12px; }
 .center { text-align: center; }
 .hidden { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mic.listening::after { animation: none; opacity: .6; }
   * { transition: none !important; }
 }
 </style>
@@ -238,176 +217,302 @@ const TEACHER = ("the of and a to in is you that it he was for on are as with hi
 "mean old any same tell boy follow came want show also around form three small").split(" ");
 const HIGHLIGHTED = ["the","of","and","a","to","on","I","we","up","go","see","no","my","me"];
 
-/* Words a speech recognizer may write instead of the one the child said */
-const SOUNDS_LIKE = {
-  the:["thee","duh","da","thuh"], a:["uh","ah","eh","ay","hey","huh"], i:["eye","aye","hi","ai"],
-  to:["too","two","2","tu"], too:["to","two","2"], two:["to","too","2"], for:["four","4","fore"],
-  one:["won","1"], three:["3","tree"], know:["no"], no:["know"], new:["knew","nu"],
-  right:["write","rite"], write:["right","rite"], their:["there","theyre"], there:["their","theyre"],
-  be:["bee","b"], see:["sea","c"], by:["buy","bye","bi"], would:["wood"], our:["hour","are"], are:["r","our"],
-  its:["it's"], been:["bin","ben"], made:["maid"], way:["weigh","whey"], where:["wear","ware"],
-  so:["sew","sow"], some:["sum"], him:["hymn"], me:["mi"], we:["wee","oui"], of:["uv","ove"],
-  in:["inn"], not:["knot"], all:["awl"], do:["due","dew"], find:["fined"], great:["grate"],
-  through:["threw","thru"], which:["witch"], your:["youre","yore"], but:["butt"], was:["wuz"],
-  boy:["buoy"], up:["yup"], he:["hee"], my:["mai"], an:["ann"], or:["oar","ore"]
-};
-
 /* ---------- Spaced repetition schedule (days until next review, by box) ---------- */
 const INTERVAL = [0, 1, 2, 4, 8, 16, 32];
 const MAX_BOX = 6, KNOWN_BOX = 4;
+/* Times one word can come up in a round: the first time, then twice more after misses */
+const ASKS_MAX = 3;
+/* Where a missed word comes back: this many cards on */
+const REASK_GAP = 4;
+/* How long "Yes!" stays up before the next word */
+const RIGHT_PAUSE = 900;
 
 function today() { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000); }
 function status(w) { if (!w || !w.b) return "n"; return w.b >= KNOWN_BOX ? "k" : "l"; }
-function norm(s) { return String(s).toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9 ]+/g, " ").trim(); }
+const ALNUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function newId() { return Array.from(crypto.getRandomValues(new Uint8Array(16)), x => ALNUM[x % 62]).join(""); }
+function int(x, d) { return Number.isInteger(x) ? x : d; }
 
-/* ---------- State ---------- */
-const LS_KEY = "sightwords.v1";
-function freshState() {
-  const t = today();
-  const words = {};
-  TEACHER.forEach(w => { words[w] = { b: 0, d: 0, r: 0, w: 0 }; });
+/* ---------- What the grown-ups share ----------
+   Everything one child's grown-ups share lives on the server under a random 20-character code, in two parts:
+   - The record (`doc`): the child's name, the word list, homework words, settings, and `base`, the
+     progress the answers build on (from before the answer log, or from a restore or a reset). It syncs
+     whole, and when two phones change it at once the first one saved wins.
+   - The answer log: one entry per tap (right, wrong, an undo, or a word's status set by hand). Entries are
+     only ever added, so a phone that quizzed offline sends its answers later and none are lost.
+   Every phone works out the child's progress by replaying the answers on top of `base` in the order
+   they were given, so phones with the same answers show the same progress. */
+function blankWord() { return { b: 0, d: 0, r: 0, w: 0 }; }
+function freshWords() {
+  const t = today(), words = {};
+  TEACHER.forEach(w => { words[w] = blankWord(); });
   HIGHLIGHTED.forEach(w => { words[w].b = 1; words[w].d = t; });
+  return words;
+}
+function freshStats() { return { stars: 0, streak: 0, lastDay: null, newDay: null, newCount: 0 }; }
+function freshDoc(name) {
+  return { v: 2, name, order: TEACHER.slice(), custom: [], settings: { newPerDay: 3, sessionSize: 12 },
+    base: { words: freshWords(), stats: freshStats(), after: 0 } };
+}
+function isObj(x) { return !!x && typeof x === "object" && !Array.isArray(x); }
+function validDoc(d) {
+  return isObj(d) && d.v === 2 && Array.isArray(d.order) && Array.isArray(d.custom) && isObj(d.settings) &&
+    isObj(d.base) && isObj(d.base.words) && isObj(d.base.stats);
+}
+/* The app before the answer log kept one progress object (v1): it becomes the base */
+function validV1(s) { return isObj(s) && s.v === 1 && Array.isArray(s.order) && isObj(s.words) && isObj(s.settings) && isObj(s.stats); }
+function fromV1(s, name) {
+  const st = s.stats;
   return {
-    v: 1, updatedAt: Date.now(), order: TEACHER.slice(), custom: [], words,
-    settings: { newPerDay: 3, sessionSize: 12, mode: "mic" },
-    stats: { stars: 0, streak: 0, lastDay: null, newDay: null, newCount: 0 },
-    checks: []
+    v: 2, name: name || "", order: s.order.slice(), custom: Array.isArray(s.custom) ? s.custom.slice() : [],
+    settings: { newPerDay: int(s.settings.newPerDay, 3), sessionSize: int(s.settings.sessionSize, 12) },
+    base: { words: s.words, after: 0, stats: { stars: int(st.stars, 0), streak: int(st.streak, 0),
+      lastDay: int(st.lastDay, null), newDay: int(st.newDay, null), newCount: int(st.newCount, 0) } }
   };
 }
-function valid(s) { return s && s.v === 1 && Array.isArray(s.order) && s.words && s.settings && s.stats; }
-/* Fill in what older saves and backups don't have */
-function upgrade(s) {
-  if (!Array.isArray(s.custom)) s.custom = [];
-  s.checks = Array.isArray(s.checks) ? s.checks.filter(x => x && typeof x.word === "string") : [];
-  return s;
+
+/* Progress from the record and the answers: { words, stats, list } where `list` is the answers that
+   count, oldest first. Answers the server numbered at or before `base.after` came before a reset or
+   restore and don't count; an undone answer doesn't either. */
+function derive(doc, answers) {
+  const words = JSON.parse(JSON.stringify(doc.base.words));
+  const stats = Object.assign(freshStats(), doc.base.stats);
+  const after = doc.base.after || 0;
+  const live = answers.filter(a => !a.n || a.n > after);
+  const undone = new Set(live.filter(a => a.undo).map(a => a.undo));
+  const list = live.filter(a => !a.undo && !undone.has(a.id))
+    .sort((x, y) => (x.at - y.at) || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+  list.forEach(a => apply(words, stats, a));
+  doc.order.forEach(w => { if (!words[w]) words[w] = blankWord(); });
+  return { words, stats, list };
 }
-let state = null;
-try { const raw = localStorage.getItem(LS_KEY); if (raw) { const s = JSON.parse(raw); if (valid(s)) state = s; } } catch (e) {}
-state = upgrade(state || freshState());
+function apply(words, st, a) {
+  const day = a.day;
+  const w = words[a.w] || (words[a.w] = blankWord());
+  if (a.set) { // set by hand in Settings
+    if (a.set === "n") { w.b = 0; w.d = 0; }
+    else if (a.set === "l") { w.b = 1; w.d = day; }
+    else { w.b = KNOWN_BOX; w.d = day + INTERVAL[KNOWN_BOX]; }
+    delete w.wd;
+    return;
+  }
+  // daily streak, and how many new words were started today
+  if (st.lastDay === null || day > st.lastDay) {
+    st.streak = st.lastDay === day - 1 ? st.streak + 1 : 1;
+    st.lastDay = day;
+  }
+  if (w.b === 0) {
+    if (st.newDay !== day) { st.newDay = day; st.newCount = 0; }
+    st.newCount++;
+  }
+  if (a.r === "right") {
+    w.r++;
+    if (w.b === 0) { w.b = 1; w.d = day + 1; st.stars++; }
+    else if (w.wd === day) { w.b = Math.max(w.b, 1); w.d = day + 1; } // right after a miss today: tomorrow, no star
+    else if (w.d <= day) { w.b = Math.min(MAX_BOX, w.b + 1); w.d = day + INTERVAL[w.b]; st.stars++; }
+    else st.stars++; // extra practice: a star, but no schedule change
+  } else {
+    w.w++; w.b = 1; w.d = day; w.wd = day; // a miss: back to box 1, due again today
+  }
+}
 
-/* Kid mode until a grown-up answers the gate. Not saved, so closing the app goes back to kid mode. */
-let grownUp = false;
-/* Misses the microphone scored in kid mode, newest first, for a grown-up to check */
-const CHECKS_MAX = 50;
-/* Times a silent listen restarts on its own before waiting for a tap */
-const QUIET_RETRIES = 2;
-/* Times a word he asked for help with ("?") comes back later in the same session: once, so he reads
-   it himself right after hearing it. After that it waits until tomorrow. */
-const HELP_REASKS = 1;
+/* ---------- This phone's copy ----------
+   { code, version, dirty, doc, answers, seen, me }: `version` is the server's version of the record that
+   `doc` is based on, `dirty` means `doc` has changes to send, `seen` is the highest answer number fetched,
+   and `me` is this grown-up's name. Answers without a number `n` haven't reached the server yet. */
+const LS_KEY = "sightwords.v2";
+const CODE_RE = /^[0-9A-HJKMNP-TV-Z]{20}$/;
+let local = loadLocal();
+let cur = null; // derive() of local
+if (local) refresh();
 
-function save() {
-  state.updatedAt = Date.now();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-  if (sync) { sync.dirty = true; edits++; storeSync(); clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, SYNC_DELAY); }
+function loadLocal() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s && CODE_RE.test(s.code) && validDoc(s.doc) && Array.isArray(s.answers)) return s;
+  } catch (e) {}
+  // progress from the app before the answer log, and its sync code if it had one
+  try {
+    const old = JSON.parse(localStorage.getItem("sightwords.v1"));
+    if (validV1(old)) {
+      let sync = null;
+      try { sync = JSON.parse(localStorage.getItem("sightwords.sync")); } catch (e) {}
+      const synced = !!sync && CODE_RE.test(sync.code) && Number.isInteger(sync.version);
+      return { code: synced ? sync.code : newCode(), version: synced ? sync.version : 0, dirty: true,
+        doc: fromV1(old), answers: [], seen: 0, me: "" };
+    }
+  } catch (e) {}
+  return null;
+}
+function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(local)); } catch (e) {} }
+function refresh() {
+  const after = local.doc.base.after || 0;
+  local.answers = local.answers.filter(a => !a.n || a.n > after);
+  cur = derive(local.doc, local.answers);
+}
+function kid() { return local.doc.name || "your reader"; }
+
+/* Add an answer to the log */
+function record(fields) {
+  const a = Object.assign({ id: newId(), at: Date.now(), day: today(), by: local.me || "" }, fields);
+  local.answers.push(a);
+  persist(); scheduleSync();
+  return a;
+}
+/* Change the record. `fn` changes the doc it's given, or returns one to use instead. */
+function editDoc(fn) {
+  const d = fn(local.doc);
+  if (d) local.doc = d;
+  local.dirty = true; docEdits++;
+  persist(); refresh(); scheduleSync();
 }
 
 /* ---------- Sync ---------- */
-/* Devices share progress through /api/sync under a family code. A device remembers the server version
-   its progress is based on; a write on top of an older version is refused and the device takes what
-   the server has instead, so whichever device saved first wins. */
-const SYNC_KEY = "sightwords.sync";
 const SYNC_DELAY = 2000;          // after the last change
 const SYNC_RETRY = 60000;         // after a failed attempt with changes still to send
-const CODE_RE = /^[0-9A-HJKMNP-TV-Z]{20}$/;
-let sync = null;                  // { code, version, dirty }
-try { const s = JSON.parse(localStorage.getItem(SYNC_KEY)); if (s && CODE_RE.test(s.code)) sync = s; } catch (e) {}
-let syncBusy = false, syncAgain = false, syncTimer = null, syncedAt = null, syncError = "", edits = 0;
+const PUSH_MAX = 100;             // answers per request
+const JSON_HEADERS = { "Content-Type": "application/json" };
+let syncBusy = false, syncAgain = false, syncTimer = null, syncedAt = null, syncError = "", docEdits = 0;
 
-function storeSync() {
-  try { if (sync) localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); else localStorage.removeItem(SYNC_KEY); } catch (e) {}
-}
 function newCode() {
   const A = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32: no I, L, O or U
   return Array.from(crypto.getRandomValues(new Uint8Array(20)), x => A[x & 31]).join("");
 }
 function showCode(c) { return c.match(/.{4}/g).join("-"); }
+/* A code typed in, or pasted with the rest of a share link */
 function readCode(s) {
-  s = String(s).toUpperCase().replace(/[^0-9A-Z]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  s = String(s);
+  const m = s.match(/join=([0-9A-Za-z-]+)/);
+  if (m) s = m[1];
+  s = s.toUpperCase().replace(/[^0-9A-Z]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
   return CODE_RE.test(s) ? s : null;
 }
+function shareLink() { return location.origin + location.pathname.replace(/index\.html$/, "") + "#join=" + local.code; }
+function unsent() { return local.answers.filter(a => !a.n); }
+function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, SYNC_DELAY); }
 function syncLine() {
-  if (!sync) return "";
+  if (!local) return "";
   if (syncError) return syncError;
-  if (sync.dirty) return "Waiting to sync…";
+  if (local.dirty || unsent().length) return "Waiting to sync…";
   return syncedAt ? "Synced at " + new Date(syncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." : "Syncing…";
 }
 function showSyncLine() { const el = document.getElementById("syncmsg"); if (el) el.textContent = syncLine(); }
 
-/* Take the server's copy in place of this device's */
-function adopt(remote) {
-  sync.version = remote.version; sync.dirty = false;
-  if (!valid(remote.data)) { sync.dirty = true; return; } // nothing usable there: write ours over it
-  state = upgrade(remote.data);
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-  if (screen === "home") renderHome();
-  else if (screen === "grownups" && grownUp) renderGrown();
+/* This phone switched to another child's code while a request was out */
+class Stale extends Error {}
+function serverError(status) { return new Error("Sync isn’t working right now (the server said " + status + "). Answers are still saved on this phone."); }
+async function call(code, path, opts) {
+  const res = await fetch(path, opts);
+  const body = await res.json().catch(() => null);
+  if (!local || local.code !== code) throw new Stale();
+  return { res, body };
 }
 
-/* Send this device's changes, or fetch the server's if there are none. `leaving`: the app is going to the background. */
+/* Send this phone's changes and fetch everyone else's. `leaving`: the app is going to the background. */
 async function syncNow(leaving) {
-  if (!sync) return;
+  if (!local) return;
   if (syncBusy) { syncAgain = true; return; }
   syncBusy = true; clearTimeout(syncTimer);
-  const code = sync.code, pushing = sync.dirty, sentEdits = edits;
-  let failed = false;
+  const code = local.code;
+  let failed = false, changed = false;
   try {
-    const res = pushing
-      ? await fetch("/api/sync/" + code, { method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ version: sync.version, data: state }), keepalive: !!leaving })
-      : await fetch("/api/sync/" + code, { cache: "no-store" });
-    const body = await res.json().catch(() => null);
-    if (!sync || sync.code !== code) return; // turned off or changed while waiting
-    syncError = "";
-    if (res.ok && pushing) { sync.version = body.version; if (edits === sentEdits) sync.dirty = false; }
-    else if (res.ok || res.status === 409) { if (body.version !== sync.version) adopt(body); }
-    else if (res.status === 404) { sync.version = 0; sync.dirty = true; } // the server has nothing under this code: put ours there
-    else { failed = true; syncError = "Sync isn’t working right now (the server said " + res.status + "). Progress is still saved here."; }
-    if (!failed) syncedAt = Date.now();
+    changed = await syncDoc(code, !!leaving);
+    if (await sendAnswers(code, !!leaving)) syncAgain = true;
+    else if (!leaving && await fetchAnswers(code)) changed = true;
+    syncError = ""; syncedAt = Date.now();
   } catch (e) {
-    failed = true;
-    if (sync) syncError = "Offline. Progress is saved here and will sync when this device is back online.";
+    if (!(e instanceof Stale)) {
+      failed = true;
+      syncError = e instanceof TypeError ? "Offline. Answers are saved on this phone and will sync when it’s back online." : e.message;
+    }
   } finally {
     syncBusy = false;
-    storeSync(); showSyncLine();
-    if (sync && sync.dirty && !failed) syncAgain = true;
+    if (local) {
+      persist();
+      if (changed) { refresh(); redraw(); } else showSyncLine();
+    }
     if (syncAgain) { syncAgain = false; syncNow(); }
-    else if (failed && sync && sync.dirty) syncTimer = setTimeout(syncNow, SYNC_RETRY);
+    else if (failed && local && (local.dirty || unsent().length)) syncTimer = setTimeout(syncNow, SYNC_RETRY);
   }
 }
-function turnOnSync() {
-  sync = { code: newCode(), version: 0, dirty: true };
-  syncError = ""; syncedAt = null;
-  save(); renderGrown(); syncNow();
+/* The record: send ours if it changed, otherwise take the server's if it's newer. True if ours was replaced. */
+async function syncDoc(code, leaving) {
+  let changed = false;
+  for (let tries = 0; tries < 3; tries++) {
+    const pushing = local.dirty, sent = docEdits;
+    const { res, body } = await call(code, "/api/sync/" + code, pushing
+      ? { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ version: local.version, data: local.doc }), keepalive: leaving }
+      : { cache: "no-store" });
+    if (res.ok && pushing) { local.version = body.version; if (docEdits === sent) local.dirty = false; return changed; }
+    if ((res.ok || res.status === 409) && body) {
+      if (!pushing && body.version === local.version) return changed;
+      takeDoc(body); changed = true;
+      if (!local.dirty) return changed;
+    } else if (res.status === 404) { local.version = 0; local.dirty = true; } // nothing there: put ours there
+    else throw serverError(res.status);
+  }
+  return changed;
 }
-async function joinSync() {
-  const msg = document.getElementById("syncmsg");
-  const code = readCode(document.getElementById("syncin").value);
-  if (!code) { msg.textContent = "That isn’t a sync code. It has 20 letters and numbers, like ABCD-EFGH-JKMN-PQRS-TV12."; return; }
-  msg.textContent = "Looking it up…";
+function takeDoc(body) {
+  local.version = body.version;
+  const d = body.data;
+  if (validDoc(d)) { local.doc = d; local.dirty = false; }
+  else if (validV1(d)) { local.doc = fromV1(d, local.doc.name); local.dirty = true; } // stored by the app before the answer log
+  else local.dirty = true; // nothing usable there: write ours over it
+}
+/* Answers not on the server yet. Sending one twice is harmless. True if the server has no record for this code. */
+async function sendAnswers(code, leaving) {
+  const todo = unsent();
+  for (let i = 0; i < todo.length; i += PUSH_MAX) {
+    const { res } = await call(code, "/api/answers/" + code, { method: "POST", headers: JSON_HEADERS,
+      body: JSON.stringify({ answers: todo.slice(i, i + PUSH_MAX) }), keepalive: leaving });
+    if (res.status === 404) { local.version = 0; local.dirty = true; return true; }
+    if (!res.ok) throw serverError(res.status);
+  }
+  return false;
+}
+/* Answers numbered after the last one seen, ours included (they get their number). True if any were new here. */
+async function fetchAnswers(code) {
+  let changed = false;
+  for (;;) {
+    const { res, body } = await call(code, "/api/answers/" + code + "?after=" + local.seen, { cache: "no-store" });
+    if (!res.ok || !body || !Array.isArray(body.answers)) throw serverError(res.status);
+    const byId = new Map(local.answers.map(a => [a.id, a]));
+    body.answers.forEach(a => {
+      const mine = byId.get(a.id);
+      if (mine) mine.n = a.n;
+      else { local.answers.push(a); byId.set(a.id, a); changed = true; }
+      local.seen = Math.max(local.seen, a.n);
+    });
+    if (!body.more) return changed;
+  }
+}
+
+/* Switch this phone to the child under `code`, from a share link or a code typed in */
+async function join(code) {
+  if (!code) { note = "That isn’t a share link or code. A code has 20 letters and numbers, like ABCD-EFGH-JKMN-PQRS-TV12."; render(); return; }
+  if (local && local.code === code) { note = "This phone already uses that link."; screen = "home"; render(); return; }
+  note = "Looking it up…"; render();
   let res = null, body = null;
   try { res = await fetch("/api/sync/" + code, { cache: "no-store" }); body = await res.json(); } catch (e) {}
-  if (!res) { msg.textContent = "Couldn’t reach the sync server. Check the internet connection and try again."; return; }
-  if (res.status === 404) { msg.textContent = "Nothing is saved under that code. Check it against the other device."; return; }
-  if (!res.ok || !body || !valid(body.data)) { msg.textContent = "Sync didn’t work (the server said " + res.status + "). Try again."; return; }
-  const stars = body.data.stats.stars || 0;
-  if (!confirm("Replace the progress on this device with the synced progress (" + stars + (stars === 1 ? " star" : " stars") + ")? This can’t be undone.")) { msg.textContent = ""; return; }
-  sync = { code, version: 0, dirty: false };
-  syncError = ""; syncedAt = Date.now();
-  adopt(body); storeSync();
-}
-function turnOffSync() {
-  if (!confirm("Stop syncing on this device? Its progress stays here, and the other devices keep syncing.")) return;
-  sync = null; syncError = ""; syncedAt = null;
-  clearTimeout(syncTimer); storeSync(); renderGrown();
+  const doc = body && (validDoc(body.data) ? body.data : validV1(body.data) ? fromV1(body.data) : null);
+  if (!res) note = "Couldn’t reach the server. Check the internet connection and try again.";
+  else if (res.status === 404) note = "Nothing is saved under that link. Ask for it again, or check the code against the other phone.";
+  else if (!res.ok || !doc) note = "Joining didn’t work (the server said " + res.status + "). Try again.";
+  if (!doc) { render(); return; }
+  if (local && !confirm("Switch this phone to " + (doc.name ? doc.name + "’s" : "the") + " progress from the link? " +
+      "What’s on this phone now stays saved for anyone who has its own link.")) { note = ""; render(); return; }
+  const me = local ? local.me : "";
+  local = { code, version: body.version, dirty: body.data.v !== 2, doc, answers: [], seen: 0, me };
+  syncError = ""; syncedAt = null;
+  persist(); refresh();
+  note = "You’re in. Everyone with this link sees the same progress.";
+  session = null; screen = "home"; render();
+  syncNow();
+  if (!me) askName(render);
 }
 
 /* ---------- Speech ---------- */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-/* Opened from the Home Screen rather than in a Safari tab */
-const STANDALONE = navigator.standalone === true ||
-  (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches);
-let micBlocked = !SR;
-let micNote = SR ? "" : "This browser can't listen for speech, so use the grown-up buttons to score.";
 function say(text) {
   try {
     if (!("speechSynthesis" in window)) return;
@@ -417,37 +522,27 @@ function say(text) {
     speechSynthesis.speak(u);
   } catch (e) {}
 }
-function accepts(target) {
-  const t = norm(target);
-  const set = new Set([t]);
-  (SOUNDS_LIKE[t] || []).forEach(x => set.add(norm(x)));
-  return set;
-}
-function matches(target, transcripts) {
-  const ok = accepts(target);
-  return transcripts.some(tr => norm(tr).split(/\s+/).some(tok => ok.has(tok)));
-}
-function useMic() { return state.settings.mode === "mic" && !micBlocked; }
 
-/* ---------- Session ---------- */
+/* ---------- Quiz ---------- */
 let screen = "home";
-let session = null; // { cards, i, earned, extra, pending, heard, listening, rec, timer, prompt }
+let note = "";      // a message shown once at the top of the next screen
+let session = null; // { cards, i, earned, moved, extra, showing, gain, timer, undo }
 
 function newWordsLeftToday() {
-  const t = today();
-  const used = state.stats.newDay === t ? state.stats.newCount : 0;
-  return Math.max(0, state.settings.newPerDay - used);
+  const t = today(), st = cur.stats;
+  const used = st.newDay === t ? st.newCount : 0;
+  return Math.max(0, local.doc.settings.newPerDay - used);
 }
 function dueWords() {
-  const t = today();
-  return state.order.filter(w => state.words[w] && state.words[w].b > 0 && state.words[w].d <= t)
-    .sort((a, b) => (state.words[a].d - state.words[b].d) || (state.words[a].b - state.words[b].b));
+  const t = today(), W = cur.words;
+  return local.doc.order.filter(w => W[w].b > 0 && W[w].d <= t)
+    .sort((a, b) => (W[a].d - W[b].d) || (W[a].b - W[b].b));
 }
-function unstarted() { return state.order.filter(w => state.words[w] && state.words[w].b === 0); }
+function unstarted() { return local.doc.order.filter(w => cur.words[w].b === 0); }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function plan() {
-  const size = state.settings.sessionSize;
+  const size = local.doc.settings.sessionSize;
   const nNew = Math.min(newWordsLeftToday(), unstarted().length, size);
   const reviews = dueWords().slice(0, size - nNew);
   return { reviews, fresh: unstarted().slice(0, nNew) };
@@ -456,330 +551,203 @@ function buildSession(extra) {
   let cards;
   if (!extra) {
     const p = plan();
-    cards = shuffle(p.reviews.map(w => ({ word: w, isNew: false, missed: false, tries: 0 })));
-    // spread new words through the session instead of bunching them
+    cards = shuffle(p.reviews.map(w => ({ word: w, isNew: false, again: false })));
+    // spread new words through the round instead of bunching them
     p.fresh.forEach((w, k) => {
       const pos = Math.min(cards.length, Math.round((k + 1) * cards.length / (p.fresh.length + 1)) + k);
-      cards.splice(pos, 0, { word: w, isNew: true, missed: false, tries: 0 });
+      cards.splice(pos, 0, { word: w, isNew: true, again: false });
     });
   } else {
-    // extra practice: the shakiest words he has already started
-    const started = state.order.filter(w => state.words[w] && state.words[w].b > 0)
-      .sort((a, b) => (state.words[a].b - state.words[b].b) || (state.words[a].d - state.words[b].d));
-    cards = shuffle(started.slice(0, state.settings.sessionSize).map(w => ({ word: w, isNew: false, missed: false, tries: 0 })));
+    // extra practice: the shakiest words already started
+    const W = cur.words;
+    const started = local.doc.order.filter(w => W[w].b > 0).sort((a, b) => (W[a].b - W[b].b) || (W[a].d - W[b].d));
+    cards = shuffle(started.slice(0, local.doc.settings.sessionSize).map(w => ({ word: w, isNew: false, again: false })));
   }
-  return { cards, i: 0, earned: 0, moved: 0, extra: !!extra, pending: null, heard: "", listening: false, rec: null, timer: null, prompt: "" };
+  return { cards, i: 0, earned: 0, moved: 0, extra: !!extra, showing: null, gain: 0, timer: null, undo: [] };
 }
 function startSession(extra) {
+  if (!local.me) { askName(() => startSession(extra)); return; }
   session = buildSession(extra);
-  if (!session.cards.length) { screen = "home"; render(); return; }
-  screen = "practice";
+  if (!session.cards.length) { session = null; screen = "home"; render(); return; }
+  screen = "quiz";
   render();
-  introIfNew();
 }
 function card() { return session.cards[session.i]; }
-/* A word he has never practised, the first time it comes up: the app reads it to him, then he reads it back */
-function isIntro(c) { return c && c.isNew && c.tries === 0 && !c.missed; }
-function introText(c) { return "Here’s a new word: “" + c.word + "”. Now you read it!"; }
-function introIfNew() {
-  const c = card();
-  if (isIntro(c)) setTimeout(() => say("Here's a new word: " + c.word + ". Now you read it!"), 250);
-}
 
-/* Record an answer, but don't commit until we move on, so a grown-up can correct it */
-/* "?": he doesn't know the word. Read it to him and let him move on without trying. */
-function askForHelp() {
-  session.pending = "help"; session.heard = ""; session.prompt = "";
-  clearTimeout(session.timer);
-  stopListening();
-  say("This word is " + card().word + ".");
-  renderPractice();
-}
-function setResult(correct, heard) {
-  stopListening();
-  const c = card();
-  session.pending = correct ? "good" : "bad";
-  session.heard = heard || "";
-  clearTimeout(session.timer);
-  if (!correct) say("This word is " + c.word + ".");
-  else session.timer = setTimeout(next, 1400);
-  renderPractice();
-}
-function flipResult() {
-  clearTimeout(session.timer);
-  const toGood = session.pending === "bad";
-  session.pending = toGood ? "good" : "bad";
-  if (!toGood) say("This word is " + card().word + ".");
-  renderPractice();
-}
-/* Put a kid-mode miss on the grown-up's "Check these" list, with the box and due date it had before.
-   A second miss on the same day keeps the first one's, so "He was right" undoes the whole day. */
-function noteMiss(word, heard, w) {
-  const t = today();
-  const i = state.checks.findIndex(x => x.word === word && x.day === t);
-  const item = i >= 0 ? state.checks.splice(i, 1)[0] : { word, day: t, b: w.b, d: w.d };
-  item.heard = heard || "";
-  state.checks.unshift(item);
-  if (state.checks.length > CHECKS_MAX) state.checks.length = CHECKS_MAX;
-}
-function commit() {
-  const c = card();
-  const w = state.words[c.word];
-  if (!w) return; // removed on another device while this card was up
-  const t = today();
-  // daily streak and new-word counter
-  if (state.stats.lastDay !== t) {
-    state.stats.streak = state.stats.lastDay === t - 1 ? state.stats.streak + 1 : 1;
-    state.stats.lastDay = t;
-  }
-  if (c.isNew && c.tries === 0 && !c.missed) {
-    if (state.stats.newDay !== t) { state.stats.newDay = t; state.stats.newCount = 0; }
-    state.stats.newCount++;
-  }
-  c.tries++;
-  if (session.pending === "good") {
-    w.r++;
-    if (c.missed) { w.b = Math.max(w.b, 1); w.d = t + 1; }
-    else if (c.isNew || w.b === 0) { w.b = 1; w.d = t + 1; state.stats.stars++; session.earned++; }
-    else if (w.d <= t) {
-      const before = status(w);
-      w.b = Math.min(MAX_BOX, w.b + 1); w.d = t + INTERVAL[w.b];
-      if (before !== "k" && status(w) === "k") session.moved++;
-      state.stats.stars++; session.earned++;
-    } else { state.stats.stars++; session.earned++; } // extra practice: no schedule change
-  } else if (session.pending === "help") {
-    // he didn't know it: back to box 1 like a miss, but due tomorrow, and not a mic mistake to check
-    w.w++;
-    w.b = 1; w.d = t + 1;
-    c.missed = true;
-    if (session.cards.filter(x => x.word === c.word).length <= HELP_REASKS) {
-      const pos = Math.min(session.cards.length, session.i + 4);
-      session.cards.splice(pos, 0, { word: c.word, isNew: false, missed: true, tries: 1 });
-    }
+/* Right or wrong: logged now (Undo takes it back) */
+function answer(r) {
+  const s = session, c = card();
+  clearTimeout(s.timer);
+  const before = status(cur.words[c.word]), stars = cur.stats.stars;
+  const a = record({ w: c.word, r });
+  refresh();
+  const step = { id: a.id, i: s.i, cards: s.cards.slice(), earned: cur.stats.stars - stars,
+    moved: before !== "k" && status(cur.words[c.word]) === "k" ? 1 : 0 };
+  s.undo.push(step);
+  s.earned += step.earned; s.moved += step.moved; s.gain = step.earned;
+  s.showing = r;
+  if (r === "wrong") {
+    // it comes back a few cards later, up to ASKS_MAX times in the round
+    if (s.cards.filter(x => x.word === c.word).length < ASKS_MAX)
+      s.cards.splice(Math.min(s.cards.length, s.i + REASK_GAP), 0, { word: c.word, isNew: false, again: true });
   } else {
-    if (!grownUp) noteMiss(c.word, session.heard, w);
-    w.w++;
-    w.b = 1; w.d = t;
-    if (!c.missed) c.missed = true;
-    // try it again a few cards later (at most twice per session)
-    const again = session.cards.filter(x => x.word === c.word).length;
-    if (again < 3) {
-      const pos = Math.min(session.cards.length, session.i + 4);
-      session.cards.splice(pos, 0, { word: c.word, isNew: false, missed: true, tries: 1 });
-    }
+    s.timer = setTimeout(next, RIGHT_PAUSE);
   }
-  save();
+  renderQuiz();
+}
+/* Skip: nothing is logged and the word stays due */
+function skip() {
+  session.undo.push({ id: null, i: session.i, cards: session.cards.slice(), earned: 0, moved: 0 });
+  next();
 }
 function next() {
-  clearTimeout(session.timer);
-  if (session.pending) commit();
-  session.pending = null; session.heard = ""; session.prompt = "";
-  session.i++;
-  if (session.i >= session.cards.length) { screen = "done"; render(); return; }
-  renderPractice();
-  introIfNew();
+  const s = session;
+  clearTimeout(s.timer);
+  s.showing = null;
+  s.i++;
+  if (s.i >= s.cards.length) { screen = "done"; render(); return; }
+  renderQuiz();
 }
-
-/* `again` is the prompt kept up while the app listens again on its own in kid mode; a tap passes nothing */
-function listen(again) {
-  if (!SR) { micBlocked = true; renderPractice(); return; }
-  try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
-  const c = card();
-  const rec = new SR();
-  rec.lang = "en-US"; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = false;
-  let matched = false, heard = "", errored = null;
-  rec.onresult = (ev) => {
-    const all = [];
-    for (let i = 0; i < ev.results.length; i++) {
-      for (let j = 0; j < ev.results[i].length; j++) all.push(ev.results[i][j].transcript);
-    }
-    if (all.length) heard = all[0];
-    session.heard = heard; 
-    const h = document.getElementById("heard"); if (h) h.textContent = heard ? "Heard: \u201C" + heard.trim() + "\u201D" : "";
-    if (matches(c.word, all)) { matched = true; try { rec.stop(); } catch (e) {} }
-  };
-  let gotAudio = false;
-  let needsTap = false;
-  rec.onaudiostart = () => { gotAudio = true; setPrompt(again || "Listening\u2026 read the word!"); };
-  rec.onsoundstart = () => setPrompt("I hear something\u2026");
-  rec.onspeechstart = () => setPrompt("I hear you!");
-  rec.onerror = (ev) => {
-    errored = ev.error;
-    if (again && (ev.error === "not-allowed" || ev.error === "service-not-allowed")) {
-      needsTap = true; // the browser may not listen again without a tap; the mic itself was fine a moment ago
-    } else if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
-      micBlocked = true;
-      micNote = "The microphone is blocked here. Score with the buttons below, or open this page in Safari or Chrome and allow the microphone.";
-    } else if (ev.error === "audio-capture") {
-      micBlocked = true; micNote = "No microphone was found. Score with the buttons below.";
-    } else if (ev.error === "network") {
-      session.prompt = "Speech needs an internet connection. Try again.";
-    }
-  };
-  rec.onend = () => {
-    session.listening = false; session.rec = null;
-    clearTimeout(session.listenTimer); clearTimeout(session.audioTimer);
-    if (screen !== "practice" || card() !== c || session.pending) return;
-    const quiet = gotAudio && (errored === "no-speech" || !errored);
-    if (matched) setResult(true, heard);
-    else if (heard.trim() && !grownUp && !c.onceMore) {
-      // kid mode: a wrong word gets one more go before it counts as a miss
-      c.onceMore = true;
-      listenAgain("Try once more!");
-    }
-    else if (heard.trim()) setResult(false, heard);
-    else if (quiet && !grownUp && !session.tapStop && (c.quiet || 0) < QUIET_RETRIES) {
-      // kid mode: hearing nothing costs nothing; listen again
-      c.quiet = (c.quiet || 0) + 1;
-      listenAgain("Read the word!");
-    }
-    else {
-      if (needsTap) session.prompt = "Tap the microphone and read the word.";
-      else if (quiet) session.prompt = "I didn't hear that. Tap and try again.";
-      renderPractice();
-    }
-  };
-  try {
-    rec.start();
-    session.rec = rec; session.listening = true; session.prompt = again || "Starting the microphone\u2026"; session.heard = "";
-    session.tapStop = false;
-    if (!again) c.quiet = 0;
-    session.listenTimer = setTimeout(() => { try { rec.stop(); } catch (e) {} }, 7000);
-    session.audioTimer = setTimeout(() => {
-      if (!gotAudio && session && session.rec === rec) {
-        try { rec.abort(); } catch (e) {}
-        session.prompt = again ? "Tap the microphone and read the word." : "The microphone isn\u2019t sending any sound. Grown-ups: try the microphone check.";
-      }
-    }, 4000);
-  } catch (e) {
-    if (again) session.prompt = "Tap the microphone and read the word.";
-    else { micBlocked = true; micNote = "The microphone couldn't start here. Score with the buttons below."; }
-  }
-  renderPractice();
-}
-/* Kid mode: show the prompt, then listen again by itself, unless the child stopped the mic with a tap */
-function listenAgain(prompt) {
-  session.prompt = prompt;
-  renderPractice();
-  if (session.tapStop) return;
-  const s = session, c = card();
-  setTimeout(() => {
-    if (session === s && screen === "practice" && card() === c && !s.pending && !s.listening) listen(prompt);
-  }, 700);
-}
-function setPrompt(t) {
-  if (!session) return;
-  session.prompt = t;
-  const el = document.querySelector(".prompt"); if (el) el.textContent = t;
-}
-function stopListening() {
-  if (session && session.rec) { try { session.rec.abort(); } catch (e) {} session.rec = null; session.listening = false; }
+/* Back to the card before the last tap, taking its answer back */
+function undo() {
+  const s = session, step = s.undo.pop();
+  if (!step) return;
+  clearTimeout(s.timer);
+  if (step.id) { record({ undo: step.id }); refresh(); }
+  s.earned -= step.earned; s.moved -= step.moved;
+  s.cards = step.cards; s.i = step.i; s.showing = null;
+  renderQuiz();
 }
 
 /* ---------- Rendering ---------- */
 const app = document.getElementById("app");
 const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#F2BE2E" stroke="#C99A16" stroke-width="1.2" d="M12 2.6l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.9 6.2 20.1l1.4-6.4L2.7 9.3l6.5-.7z"/></svg>';
-const MIC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>';
 function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
+function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+function noteHtml() { const n = note; note = ""; return n ? '<div class="notice" role="status">' + esc(n) + '</div>' : ""; }
 
 function topBar(right) {
-  const st = state.stats;
+  const st = cur.stats;
   const streak = st.streak > 1 && (st.lastDay === today() || st.lastDay === today() - 1) ? '<span class="streak">' + st.streak + ' days in a row</span>' : "";
-  return '<div class="bar"><span class="stars" aria-label="' + st.stars + ' stars">' + STAR + st.stars + streak + '</span>' + right + '</div>';
+  return '<div class="bar"><span class="stars" aria-label="' + st.stars + ' stars">' + STAR + st.stars + streak + '</span><span class="bar-right">' + right + '</span></div>';
 }
 function wordSheet(word, opts) {
   opts = opts || {};
   const len = word.length;
   const cls = len >= 8 ? "word small" : len >= 6 ? "word long" : "word";
-  return '<div class="sheet ' + (opts.state || "") + '">' +
+  return '<div class="sheet ' + (opts.cls || "") + " " + (opts.state || "") + '">' +
     (opts.tag ? '<span class="tag">' + opts.tag + '</span>' : "") +
     (opts.verdict ? '<span class="verdict ' + opts.state + '">' + opts.verdict + '</span>' : "") +
     '<span class="' + cls + '"><span class="ruler" aria-hidden="true"><i class="top"></i><i class="mid"></i><i class="base"></i></span><span class="word-text">' + esc(word) + '</span></span></div>';
 }
 function counts() {
   let n = 0, l = 0, k = 0;
-  state.order.forEach(w => { const s = status(state.words[w]); if (s === "k") k++; else if (s === "l") l++; else n++; });
-  return { n, l, k, total: state.order.length };
+  local.doc.order.forEach(w => { const s = status(cur.words[w]); if (s === "k") k++; else if (s === "l") l++; else n++; });
+  return { n, l, k, total: local.doc.order.length };
+}
+/* Quizzes so far, newest first: one line per grown-up per day */
+function quizLog() {
+  const groups = new Map();
+  cur.list.forEach(a => {
+    if (!a.r) return;
+    const key = a.day + "\n" + a.by;
+    let g = groups.get(key);
+    if (!g) groups.set(key, g = { day: a.day, by: a.by, right: 0, wrong: 0, at: 0 });
+    g[a.r]++; g.at = Math.max(g.at, a.at);
+  });
+  return Array.from(groups.values()).sort((x, y) => y.at - x.at);
+}
+function grownUps() {
+  const names = new Set(local.answers.map(a => a.by).filter(Boolean));
+  if (local.me) names.add(local.me);
+  return Array.from(names);
+}
+
+function renderWelcome() {
+  app.innerHTML = noteHtml() + wordSheet("hi!") +
+    '<h1>Sight Words</h1>' +
+    '<p>Show a word on your phone, your child reads it, and you tap Right or Wrong. The app picks which words to practise, and every grown-up you share it with sees the same progress.</p>' +
+    '<h2>Start</h2>' +
+    '<label class="f" for="kidin">Child’s first name</label><input class="field" id="kidin" maxlength="30" autocomplete="off">' +
+    '<label class="f" for="mein">Your name</label><input class="field" id="mein" maxlength="30" autocomplete="off" placeholder="Like Mom or Grandpa Joe">' +
+    '<button class="big" id="begin">Start</button><p class="muted" id="beginmsg" role="status" style="margin-top:10px"></p>' +
+    '<h2>Join another grown-up</h2>' +
+    '<p class="muted">Already set up on someone else’s phone? Open the link they sent, or paste it or its code here.</p>' +
+    '<div class="add"><input id="joinin" placeholder="Link or code" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="plain" id="joinbtn">Join</button></div>';
+  on("begin", () => {
+    const name = document.getElementById("kidin").value.trim(), me = document.getElementById("mein").value.trim();
+    if (!name || !me) { document.getElementById("beginmsg").textContent = "Fill in both names first."; return; }
+    local = { code: newCode(), version: 0, dirty: true, doc: freshDoc(name), answers: [], seen: 0, me };
+    persist(); refresh();
+    screen = "home"; render(); syncNow();
+  });
+  onJoinInput();
+}
+function onJoinInput() {
+  const go = () => join(readCode(document.getElementById("joinin").value));
+  on("joinbtn", go);
+  document.getElementById("joinin").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 }
 
 function renderHome() {
   const p = plan();
   const total = p.reviews.length + p.fresh.length;
   const c = counts();
-  const tiles = state.order.map(w => '<b class="' + status(state.words[w]) + '" title="' + esc(w) + '"></b>').join("");
+  const tiles = local.doc.order.map(w => '<b class="' + status(cur.words[w]) + '" title="' + esc(w) + '"></b>').join("");
   let planText, cta;
   if (total) {
-    planText = total + (total === 1 ? " word" : " words") + " to read today" +
+    planText = esc(kid()) + " has " + plural(total, "word", "words") + " to read today" +
       (p.fresh.length ? ", with " + p.fresh.length + " new " + (p.fresh.length === 1 ? "one" : "ones") : "") + ".";
-    cta = '<button class="big" id="start">Start reading</button>';
+    cta = '<button class="big" id="start">Start quiz</button>';
   } else {
     planText = "All done for today. Come back tomorrow for more!";
     cta = c.k + c.l > 0 ? '<button class="big" id="extra">Practice anyway</button>' : "";
   }
-  app.innerHTML = topBar('<button class="link" id="grown">Grown-ups</button>') +
+  const log = quizLog().slice(0, 8).map(g =>
+    '<li><span>' + dayLabel(g.day) + (g.by ? " · " + esc(g.by) : "") + '</span><span>' + g.right + ' right, ' + g.wrong + ' wrong</span></li>').join("");
+  app.innerHTML = topBar('<button class="link" id="settings">Settings</button>') + noteHtml() +
     wordSheet(total ? "read!" : "yay!") +
-    '<p class="center" style="font-size:20px;font-weight:700">' + planText + '</p>' + cta +
+    '<p class="center lead">' + planText + '</p>' + cta +
     '<h2>' + c.k + ' of ' + c.total + ' words known</h2>' +
     '<div class="tiles" aria-hidden="true">' + tiles + '</div>' +
-    '<div class="legend"><span><i style="background:var(--tile-known)"></i>Known (' + c.k + ')</span><span><i style="background:var(--tile-learn)"></i>Learning (' + c.l + ')</span><span><i style="background:var(--tile-new)"></i>Not started (' + c.n + ')</span></div>';
+    '<div class="legend"><span><i style="background:var(--tile-known)"></i>Known (' + c.k + ')</span><span><i style="background:var(--tile-learn)"></i>Learning (' + c.l + ')</span><span><i style="background:var(--tile-new)"></i>Not started (' + c.n + ')</span></div>' +
+    (log ? '<h2>Recent quizzes</h2><ul class="log">' + log + '</ul>' : "") +
+    (grownUps().length < 2 ? '<h2>Quiz together</h2><p class="muted">Send the share link to other grown-ups so they can quiz ' + esc(kid()) + ' too. Everyone sees the same progress.</p><button class="plain" id="invite">Share with a grown-up</button>' : "") +
+    '<p class="muted center" id="syncmsg" role="status" style="margin-top:22px;font-size:15px">' + esc(syncLine()) + '</p>';
   on("start", () => startSession(false));
   on("extra", () => startSession(true));
-  on("grown", () => {
-    if (grownUp) { screen = "grownups"; render(); }
-    else parentGate(() => { grownUp = true; screen = "grownups"; render(); });
-  });
+  on("settings", () => { screen = "settings"; render(); });
+  on("invite", invite);
 }
 
-function renderPractice() {
+function renderQuiz() {
   const s = session, c = card();
   if (!c) return;
-  const doneCount = s.i;
-  const pct = Math.round(100 * doneCount / s.cards.length);
-  let sheetState = "", verdict = "", tag = c.isNew && !c.missed ? "New word" : (c.missed ? "Try again" : "");
-  if (s.pending === "good") { sheetState = "good"; verdict = "Yes!"; }
-  if (s.pending === "bad") { sheetState = "bad"; verdict = "Not yet"; }
-  let body = "";
-  if (s.pending === "bad" || s.pending === "help") {
-    body = '<div class="mic-area"><p class="prompt">This word is \u201C' + esc(c.word) + '\u201D. Say it with me!</p>' +
-      '<div class="row" style="width:100%"><button class="plain" id="hear">Hear it again</button><button class="big" id="next" style="font-size:22px;padding:12px">Next</button></div>' +
-      '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
-  } else if (s.pending === "good") {
-    body = '<div class="mic-area"><p class="prompt">You got a star!</p><p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
-  } else if (useMic()) {
-    body = '<div class="mic-area"><div class="mic-row"><button class="mic ' + (s.listening ? "listening" : "") + '" id="mic" aria-label="' + (s.listening ? "Stop listening" : "Tap, then read the word") + '">' + MIC + '</button>' +
-      '<button class="help" id="help" aria-label="I don’t know this word">?</button></div>' +
-      '<p class="prompt" aria-live="polite">' + esc(s.prompt || (isIntro(c) ? introText(c) : "Tap, then read the word")) + '</p>' +
-      '<p class="heard" id="heard">' + (s.heard ? "Heard: \u201C" + esc(s.heard.trim()) + "\u201D" : "") + '</p></div>';
-  } else if (!grownUp) {
-    body = '<p class="prompt">Ask a grown-up to help</p>';
+  const pct = Math.round(100 * s.i / s.cards.length);
+  let state = "", verdict = "", body;
+  const tag = c.again ? "Try again" : c.isNew ? "New word" : "";
+  if (s.showing === "right") {
+    state = "good"; verdict = "Yes!";
+    body = '<p class="prompt">' + (s.gain ? "A star for " + esc(kid()) + "!" : "Right!") + '</p>' +
+      '<div class="answers"><button class="ans next" id="next">Next</button></div>';
+  } else if (s.showing === "wrong") {
+    state = "bad"; verdict = "Not yet";
+    body = '<p class="prompt">Tell ' + esc(kid()) + ' the word, then say it together.</p>' +
+      '<div class="answers"><button class="ans next" id="next">Next</button><button class="ans hear" id="hear">🔊 Hear it</button></div>';
   } else {
-    body = '<p class="prompt">' + esc(isIntro(c) ? introText(c) : "Read the word out loud!") + '</p>' + (micNote && state.settings.mode === "mic" ? '<div class="notice">' + esc(micNote) + '</div>' : "");
+    body = '<div class="answers"><button class="ans right" id="right">✓ Right</button><button class="ans wrong" id="wrong">✗ Wrong</button>' +
+      '<button class="ans skip" id="skip">Skip</button></div>';
   }
-  let grown;
-  if (!grownUp) {
-    // kid mode: no scoring or override buttons; without the mic, a grown-up unlocks them here
-    grown = s.pending || useMic() ? "" : '<div class="grownup-row"><span>Grown-ups can score after answering a question.</span><button class="plain" id="unlock">Grown-up scoring</button></div>';
-  } else if (s.pending === "help") {
-    grown = ""; // he asked; there is no score to override
-  } else if (s.pending) {
-    grown = '<div class="grownup-row"><span>Grown-up: did it hear him wrong?</span><button class="plain ' + (s.pending === "bad" ? "btn-good" : "btn-bad") + '" id="flip">' +
-      (s.pending === "bad" ? "He got it right" : "He missed it") + '</button>' + (s.pending === "good" ? '<button class="plain" id="next">Next</button>' : "") + '</div>';
-  } else {
-    grown = '<div class="grownup-row ' + (useMic() ? "" : "primary") + '"><span>' + (useMic() ? "Grown-up can score instead:" : "Grown-up scores:") + '</span>' +
-      '<button class="plain btn-good" id="gotit">\u2713 Got it</button><button class="plain btn-bad" id="notyet">\u2717 Not yet</button></div>';
-  }
-  app.innerHTML = topBar('<button class="link" id="quit">Stop</button>') +
-    '<div class="progress"><div class="track"><div class="fill" style="width:' + pct + '%"></div></div><span>' + (doneCount + 1) + ' of ' + s.cards.length + '</span></div>' +
-    wordSheet(c.word, { state: sheetState, verdict, tag }) + body + grown;
-  on("mic", () => { if (s.listening) { s.tapStop = true; try { s.rec && s.rec.stop(); } catch (e) {} } else listen(); });
-  on("gotit", () => setResult(true, ""));
-  on("notyet", () => setResult(false, ""));
-  on("flip", flipResult);
+  app.innerHTML = topBar((s.undo.length ? '<button class="link" id="undo">Undo</button>' : "") + '<button class="link" id="quit">Stop</button>') +
+    '<div class="progress"><div class="track"><div class="fill" style="width:' + pct + '%"></div></div><span>' + (s.i + 1) + ' of ' + s.cards.length + '</span></div>' +
+    wordSheet(c.word, { cls: "quiz", state, verdict, tag }) + body;
+  on("right", () => answer("right"));
+  on("wrong", () => answer("wrong"));
+  on("skip", skip);
   on("next", next);
   on("hear", () => say(c.word));
-  on("help", askForHelp);
-  on("unlock", () => parentGate(() => { grownUp = true; renderPractice(); }));
-  on("quit", () => { stopListening(); clearTimeout(s.timer); if (s.pending) commit(); session = null; screen = "home"; render(); });
+  on("undo", undo);
+  on("quit", () => { clearTimeout(s.timer); session = null; screen = "home"; render(); });
 }
 
 function renderDone() {
@@ -787,92 +755,65 @@ function renderDone() {
   const c = counts();
   app.innerHTML = topBar("") +
     wordSheet("done!", { state: "good" }) +
-    '<p class="center" style="font-size:22px;font-weight:700">You earned ' + s.earned + (s.earned === 1 ? " star" : " stars") + '!</p>' +
-    (s.moved ? '<p class="center">' + s.moved + (s.moved === 1 ? " word" : " words") + ' moved to Known.</p>' : "") +
+    '<p class="center" style="font-size:22px;font-weight:700">' + esc(kid()) + ' earned ' + plural(s.earned, "star", "stars") + '!</p>' +
+    (s.moved ? '<p class="center">' + plural(s.moved, "word", "words") + ' moved to Known.</p>' : "") +
     '<p class="center muted">' + c.k + ' of ' + c.total + ' words known.</p>' +
     '<div class="row" style="margin-top:18px"><button class="plain" id="home">Home</button><button class="big" id="more" style="font-size:22px;padding:12px">Practice more</button></div>';
   on("home", () => { session = null; screen = "home"; render(); });
   on("more", () => { const p = plan(); startSession(p.reviews.length + p.fresh.length === 0); });
 }
 
-function renderGrown() {
-  const st = state.settings;
-  const chips = state.order.map(w => {
-    const custom = state.custom.indexOf(w) >= 0;
-    return '<button class="chip ' + status(state.words[w]) + '" data-w="' + esc(w) + '">' + esc(w) + (custom ? '<span class="x" data-rm="' + esc(w) + '" aria-label="Remove ' + esc(w) + '">\u00D7</span>' : "") + '</button>';
+function renderSettings() {
+  const st = local.doc.settings;
+  const chips = local.doc.order.map(w => {
+    const custom = local.doc.custom.indexOf(w) >= 0;
+    return '<button class="chip ' + status(cur.words[w]) + '" data-w="' + esc(w) + '">' + esc(w) + (custom ? '<span class="x" data-rm="' + esc(w) + '" aria-label="Remove ' + esc(w) + '">×</span>' : "") + '</button>';
   }).join("");
-  const checks = state.checks.map((it, i) =>
-    '<div class="setting"><div class="label"><b style="font-size:24px">' + esc(it.word) + '</b><small>' + dayLabel(it.day) + ' · ' +
-      (it.heard ? 'heard “' + esc(it.heard.trim()) + '”' : "heard nothing") + '</small></div>' +
-    '<div class="row"><button class="plain btn-good" data-right="' + i + '">He was right</button><button class="plain" data-dismiss="' + i + '">Dismiss</button></div></div>').join("");
-  app.innerHTML = topBar('<button class="link" id="back">Done</button>') +
-    '<div class="bar"><h1>Grown-ups</h1><button class="plain" id="kidmode">Back to kid mode</button></div>' +
-    (checks ? '<h2>Check these</h2><p class="muted">The microphone marked these wrong. If he read one right, “He was right” undoes the miss and gives the star.</p><div id="checks">' + checks + '</div>' : "") +
-    (STANDALONE && !SR ? '<div class="notice">This Home Screen app can’t listen for speech, so it scores with the buttons. To use the microphone, open <b>' + esc(location.host + location.pathname.replace(/index\.html$/, "")) + '</b> in Safari instead. Safari keeps its own progress, separate from this app: turn on Sync below to share it.</div>' : "") +
-    '<p class="muted">Each word he reads right waits longer before it comes back: 1 day, then 2, 4, 8, 16, and 32. A miss sends it back to tomorrow. After three good days in a row a word counts as known.</p>' +
-    '<div class="setting"><div class="label">New words per day<small>Added in the order on the teacher\u2019s list</small></div><div class="stepper"><button id="nd-" aria-label="Fewer">\u2212</button><output>' + st.newPerDay + '</output><button id="nd+" aria-label="More">+</button></div></div>' +
-    '<div class="setting"><div class="label">Words per practice</div><div class="stepper"><button id="ss-" aria-label="Fewer">\u2212</button><output>' + st.sessionSize + '</output><button id="ss+" aria-label="More">+</button></div></div>' +
-    '<div class="setting"><div class="label">Scoring<small>' + (SR ? "The microphone listens; you can always override" : "This browser can\u2019t listen, so buttons are used") + '</small></div><div class="seg" role="group" aria-label="Scoring">' +
-      '<button id="m-mic" aria-pressed="' + (st.mode === "mic") + '">Microphone</button><button id="m-btn" aria-pressed="' + (st.mode === "buttons") + '">Buttons</button></div></div>' +
+  const others = grownUps().filter(n => n !== local.me);
+  app.innerHTML = topBar('<button class="link" id="back">Done</button>') + noteHtml() +
+    '<h1>Settings</h1>' +
+    '<label class="f" for="mein">Your name</label><input class="field" id="mein" maxlength="30" autocomplete="off" value="' + esc(local.me) + '">' +
+    '<label class="f" for="kidin">Child’s name</label><input class="field" id="kidin" maxlength="30" autocomplete="off" value="' + esc(local.doc.name) + '">' +
+    '<h2>Grown-ups</h2>' +
+    '<p class="muted">' + (others.length ? "Quizzing with you: " + esc(others.join(", ")) + ". " : "") +
+      'Everyone with the share link sees and adds to the same progress. On another phone, open the link, or enter the code under Join.</p>' +
+    '<p class="synccode">' + showCode(local.code) + '</p>' +
+    '<button class="plain" id="invite">Share link</button>' +
+    '<p class="muted" id="syncmsg" role="status" style="margin-top:10px">' + esc(syncLine()) + '</p>' +
+    '<h2>Practice</h2>' +
+    '<p class="muted">Each word read right waits longer before it comes back: 1 day, then 2, 4, 8, 16, and 32. A miss sends it back to the start. After three good days in a row a word counts as known.</p>' +
+    '<div class="setting"><div class="label">New words per day<small>Added in the order on the teacher’s list</small></div><div class="stepper"><button id="nd-" aria-label="Fewer">−</button><output>' + st.newPerDay + '</output><button id="nd+" aria-label="More">+</button></div></div>' +
+    '<div class="setting"><div class="label">Words per quiz</div><div class="stepper"><button id="ss-" aria-label="Fewer">−</button><output>' + st.sessionSize + '</output><button id="ss+" aria-label="More">+</button></div></div>' +
     '<h2>Words</h2><p class="muted">Tap a word to change it: not started, learning, known.</p>' +
     '<div class="legend" style="margin-bottom:10px"><span><i style="background:var(--tile-known)"></i>Known</span><span><i style="background:var(--tile-learn)"></i>Learning</span><span><i style="background:var(--tile-new)"></i>Not started</span></div>' +
     '<div class="chips" id="chips">' + chips + '</div>' +
     '<h2>Add words</h2><p class="muted">Homework words go to the front of the new-word line. Separate words with commas or spaces.</p>' +
     '<div class="add"><input id="addin" placeholder="e.g. jump, blue, said" autocomplete="off" autocapitalize="none"><button class="plain" id="addbtn">Add</button></div>' +
-    '<h2>Microphone check</h2><p class="muted">If the mic turns red but never hears him, run both checks and look at what they report.</p>' +
-    '<div class="row"><button class="plain" id="dspeech">Check speech</button><button class="plain" id="dlevel">Check sound level</button></div>' +
-    '<pre id="diag" class="notice" style="white-space:pre-wrap;font-size:13px;min-height:3em">Not run yet.</pre>' +
-    '<h2>Sync</h2>' + (sync
-      ? '<p class="muted">This device shares progress with every device that has this code. To add one, open Grown-ups there and enter the code.</p>' +
-        '<p class="synccode">' + showCode(sync.code) + '</p>' +
-        '<div class="row"><button class="plain" id="synccopy">Copy code</button><button class="plain" id="syncoff">Stop syncing here</button></div>'
-      : '<p class="muted">Share progress between devices, or between Safari and the Home Screen app. Turn it on where the progress you want to keep is, then enter its code on the others.</p>' +
-        '<button class="plain" id="syncon">Turn on sync</button>' +
-        '<div class="add"><input id="syncin" placeholder="Code from another device" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="plain" id="syncjoin">Join</button></div>') +
-    '<p class="muted" id="syncmsg" role="status" style="margin-top:10px">' + esc(syncLine()) + '</p>' +
+    '<h2>Join</h2><p class="muted">Switch this phone to the progress from someone else’s link.</p>' +
+    '<div class="add"><input id="joinin" placeholder="Link or code" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="plain" id="joinbtn">Join</button></div>' +
     '<h2>Backup</h2><p class="muted">Save progress to a file, or replace it with a file saved before.</p>' +
     '<div class="row"><button class="plain" id="backup">Back up progress</button><button class="plain" id="restore">Restore progress</button></div>' +
     '<input type="file" id="restorefile" class="hidden" accept=".json,application/json">' +
     '<p class="muted" id="bkmsg" role="status" style="margin-top:10px"></p>' +
-    '<h2>Start over</h2><p class="muted">Clears stars and progress and puts the highlighted words back into practice.</p>' +
+    '<h2>Start over</h2><p class="muted">Clears stars and progress for every grown-up and puts the highlighted words back into practice.</p>' +
     '<button class="plain danger" id="reset">Reset progress</button>';
-  const step = (key, d, lo, hi) => () => { st[key] = Math.max(lo, Math.min(hi, st[key] + d)); save(); renderGrown(); };
+
+  document.getElementById("mein").addEventListener("change", e => {
+    const v = e.target.value.trim();
+    if (v) { local.me = v; persist(); } else e.target.value = local.me;
+  });
+  document.getElementById("kidin").addEventListener("change", e => {
+    const v = e.target.value.trim();
+    if (v) editDoc(d => { d.name = v; }); else e.target.value = local.doc.name;
+  });
+  const step = (key, d, lo, hi) => () => { editDoc(doc => { doc.settings[key] = Math.max(lo, Math.min(hi, doc.settings[key] + d)); }); renderSettings(); };
   on("nd-", step("newPerDay", -1, 0, 10)); on("nd+", step("newPerDay", 1, 0, 10));
   on("ss-", step("sessionSize", -2, 4, 30)); on("ss+", step("sessionSize", 2, 4, 30));
-  on("m-mic", () => { st.mode = "mic"; save(); renderGrown(); });
-  on("m-btn", () => { st.mode = "buttons"; save(); renderGrown(); });
   on("back", () => { screen = "home"; render(); });
-  on("kidmode", () => { grownUp = false; screen = "home"; render(); });
-  const checkList = document.getElementById("checks");
-  if (checkList) checkList.addEventListener("click", e => {
-    const right = e.target.closest("[data-right]"), dismiss = e.target.closest("[data-dismiss]");
-    if (!right && !dismiss) return;
-    const i = Number((right || dismiss).getAttribute(right ? "data-right" : "data-dismiss"));
-    const it = state.checks[i];
-    if (right) {
-      const w = state.words[it.word];
-      if (w) {
-        // back to the box and due date from before the miss, unless he has read it right since (a miss leaves box 1)
-        if (w.b <= 1) { w.b = it.b; w.d = it.d; }
-        w.w = Math.max(0, w.w - 1); w.r++;
-      }
-      state.stats.stars++;
-    }
-    state.checks.splice(i, 1);
-    save(); renderGrown();
-  });
+  on("invite", invite);
   on("addbtn", addWords);
-  on("dspeech", diagSpeech);
-  on("dlevel", diagLevel);
-  on("syncon", turnOnSync);
-  on("syncjoin", joinSync);
-  on("syncoff", turnOffSync);
-  on("synccopy", () => {
-    if (navigator.clipboard) navigator.clipboard.writeText(showCode(sync.code))
-      .then(() => { document.getElementById("syncmsg").textContent = "Code copied."; }, () => {});
-  });
-  const syncIn = document.getElementById("syncin");
-  if (syncIn) syncIn.addEventListener("keydown", e => { if (e.key === "Enter") joinSync(); });
+  document.getElementById("addin").addEventListener("keydown", e => { if (e.key === "Enter") addWords(); });
+  onJoinInput();
   on("backup", backupProgress);
   on("restore", () => document.getElementById("restorefile").click());
   document.getElementById("restorefile").addEventListener("change", e => {
@@ -880,84 +821,47 @@ function renderGrown() {
     e.target.value = ""; // so choosing the same file again still fires
     if (file) restoreProgress(file);
   });
-  document.getElementById("addin").addEventListener("keydown", e => { if (e.key === "Enter") addWords(); });
   document.getElementById("chips").addEventListener("click", e => {
     const rm = e.target.closest("[data-rm]");
     if (rm) {
       const w = rm.getAttribute("data-rm");
-      if (confirm("Remove \u201C" + w + "\u201D?")) {
-        state.order = state.order.filter(x => x !== w); state.custom = state.custom.filter(x => x !== w); delete state.words[w];
-        save(); renderGrown();
+      if (confirm("Remove “" + w + "”?")) {
+        editDoc(d => { d.order = d.order.filter(x => x !== w); d.custom = d.custom.filter(x => x !== w); delete d.base.words[w]; });
+        renderSettings();
       }
       return;
     }
     const chip = e.target.closest("[data-w]");
     if (!chip) return;
-    const w = state.words[chip.getAttribute("data-w")], t = today(), s = status(w);
-    if (s === "n") { w.b = 1; w.d = t; } else if (s === "l") { w.b = KNOWN_BOX; w.d = t + INTERVAL[KNOWN_BOX]; } else { w.b = 0; w.d = 0; }
-    save(); renderGrown();
+    const w = chip.getAttribute("data-w"), s = status(cur.words[w]);
+    record({ w, set: s === "n" ? "l" : s === "l" ? "k" : "n" });
+    refresh(); renderSettings();
   });
   on("reset", () => {
-    if (!confirm("Reset all progress and stars" + (sync ? " on every synced device" : "") + "? This can\u2019t be undone.")) return;
-    const keep = { order: state.order, custom: state.custom, settings: state.settings };
-    state = freshState();
-    keep.custom.forEach(w => { if (!state.words[w]) state.words[w] = { b: 0, d: 0, r: 0, w: 0 }; });
-    state.order = keep.order.filter(w => state.words[w]); state.custom = keep.custom; state.settings = keep.settings;
-    save(); renderGrown();
+    if (!confirm("Reset all of " + kid() + "’s progress and stars, for every grown-up? This can’t be undone.")) return;
+    local.answers = local.answers.filter(a => a.n); // not sent yet: from before the reset
+    editDoc(d => { d.base = { words: freshWords(), stats: freshStats(), after: local.seen }; });
+    renderSettings();
   });
 }
-function diagOut() {
-  const el = document.getElementById("diag");
-  const t0 = performance.now();
-  el.textContent = "";
-  return (msg) => { el.textContent += ((performance.now() - t0) / 1000).toFixed(1) + "s  " + msg + "\n"; };
-}
-function diagSpeech() {
-  const log = diagOut();
-  let framed = true; try { framed = window.self !== window.top; } catch (e) {}
-  log("Inside another page (frame): " + (framed ? "yes" : "no"));
-  log("Speech recognition available: " + (SR ? "yes" : "no"));
-  if (!SR) return;
-  try { speechSynthesis.cancel(); } catch (e) {}
-  const rec = new SR();
-  rec.lang = "en-US"; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
-  ["start","audiostart","soundstart","speechstart","speechend","soundend","audioend","nomatch"].forEach(n => { rec["on" + n] = () => log("event: " + n); });
-  rec.onresult = (ev) => { const r = ev.results[ev.results.length - 1]; log("heard: \u201C" + r[0].transcript + "\u201D" + (r.isFinal ? " (final)" : "")); };
-  rec.onerror = (ev) => log("error: " + ev.error + (ev.message ? " " + ev.message : ""));
-  rec.onend = () => log("event: end");
-  try { rec.start(); log("Say a word now\u2026"); } catch (e) { log("start failed: " + e.message); }
-  setTimeout(() => { try { rec.stop(); } catch (e) {} }, 6000);
-}
-async function diagLevel() {
-  const log = diagOut();
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { log("This page can\u2019t access the microphone at all."); return; }
-  let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch (e) { log("Microphone refused: " + e.name + (e.message ? " (" + e.message + ")" : "")); return; }
-  log("Microphone opened. Talk for 3 seconds\u2026");
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AC(); await ctx.resume();
-    const an = ctx.createAnalyser(); an.fftSize = 1024;
-    ctx.createMediaStreamSource(stream).connect(an);
-    const buf = new Float32Array(an.fftSize); let peak = 0;
-    const end = performance.now() + 3000;
-    await new Promise(res => (function tick() {
-      an.getFloatTimeDomainData(buf);
-      for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
-      if (performance.now() < end) requestAnimationFrame(tick); else res();
-    })());
-    log("Loudest sound: " + Math.round(peak * 100) + "% " + (peak > 0.02 ? "(sound is reaching the page)" : "(silence: no sound is reaching the page)"));
-    ctx.close();
-  } catch (e) { log("Level check failed: " + e.message); }
-  stream.getTracks().forEach(t => t.stop());
+async function invite() {
+  const url = shareLink();
+  const text = "Help quiz " + kid() + " on sight words. Open this link on your phone:";
+  if (navigator.share) {
+    try { await navigator.share({ title: "Sight Words", text, url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  let copied = false;
+  try { await navigator.clipboard.writeText(url); copied = true; } catch (e) {}
+  alert(copied ? "Link copied. Send it to the other grown-up." : "Send this link to the other grown-up:\n" + url);
 }
 function backupProgress() {
-  const json = JSON.stringify(state); // the same JSON save() keeps under LS_KEY
+  // the record with the progress so far as its base: restoring it needs no answers
+  const json = JSON.stringify(Object.assign({}, local.doc, { base: { words: cur.words, stats: cur.stats, after: 0 } }));
   const name = "sight-words-backup-" + new Date(today() * 86400000).toISOString().slice(0, 10) + ".json";
   const blob = new Blob([json], { type: "application/json" });
-  // A Home Screen app can't reliably download a file, so offer the share sheet (Save to Files) there
-  if (STANDALONE && typeof File === "function" && navigator.canShare) {
+  // A Home Screen app can't reliably download a file, so offer the share sheet (Save to Files) where there is one
+  if (typeof File === "function" && navigator.canShare) {
     const file = new File([blob], name, { type: "application/json" });
     if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
   }
@@ -971,34 +875,32 @@ async function restoreProgress(file) {
   const msg = document.getElementById("bkmsg");
   let s = null;
   try { s = JSON.parse(await file.text()); } catch (e) {}
-  if (!valid(s) || [s.words, s.settings, s.stats].some(x => typeof x !== "object")) {
-    msg.textContent = "That file isn’t a Sight Words backup, so nothing was changed.";
-    return;
-  }
-  const when = typeof s.updatedAt === "number" ? " from " + new Date(s.updatedAt).toLocaleDateString() : "";
-  if (!confirm("Replace the progress on this device" + (sync ? " and every device it syncs with" : "") + " with the backup" + when + "? This can’t be undone.")) return;
-  state = upgrade(s);
-  save(); renderGrown();
+  const d = validDoc(s) ? s : validV1(s) ? fromV1(s) : null; // v1: a backup from before the answer log
+  if (!d) { msg.textContent = "That file isn’t a Sight Words backup, so nothing was changed."; return; }
+  if (!confirm("Replace " + kid() + "’s progress with the backup, for every grown-up? This can’t be undone.")) return;
+  local.answers = local.answers.filter(a => a.n); // not sent yet: from before the restore
+  editDoc(doc => Object.assign({}, d, { name: d.name || doc.name, base: Object.assign({}, d.base, { after: local.seen }) }));
+  renderSettings();
   document.getElementById("bkmsg").textContent = "Progress restored.";
 }
 function addWords() {
   const input = document.getElementById("addin");
   const parts = input.value.split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
-  const existing = new Set(state.order.map(w => w.toLowerCase()));
+  const existing = new Set(local.doc.order.map(w => w.toLowerCase()));
   const added = [];
   parts.forEach(p => {
     const w = p.replace(/[^A-Za-z'\-]/g, "");
     if (!w || existing.has(w.toLowerCase())) return;
     existing.add(w.toLowerCase()); added.push(w);
-    state.words[w] = { b: 0, d: 0, r: 0, w: 0 };
-    state.custom.push(w);
   });
   if (!added.length) { input.value = ""; return; }
-  // put new homework words first in the not-started line
-  const firstNew = state.order.findIndex(w => state.words[w].b === 0);
-  const at = firstNew < 0 ? state.order.length : firstNew;
-  state.order.splice(at, 0, ...added);
-  save(); renderGrown();
+  editDoc(d => {
+    added.forEach(w => { d.base.words[w] = blankWord(); d.custom.push(w); });
+    // homework words go first in the not-started line
+    const firstNew = d.order.findIndex(w => cur.words[w].b === 0);
+    d.order.splice(firstNew < 0 ? d.order.length : firstNew, 0, ...added);
+  });
+  renderSettings();
 }
 
 function dayLabel(d) {
@@ -1007,39 +909,50 @@ function dayLabel(d) {
   if (d === t - 1) return "Yesterday";
   return new Date(d * 86400000).toLocaleDateString(undefined, { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 }
-/* Parent gate: a two-digit sum. Right calls onPass; wrong or cancel just closes. */
-function parentGate(onPass) {
-  const a = 10 + Math.floor(Math.random() * 90), b = 10 + Math.floor(Math.random() * 90);
+/* Ask this grown-up's name once, for the quiz log. `then` runs once there is one. */
+function askName(then) {
   const dlg = document.createElement("dialog");
-  dlg.className = "gate";
-  dlg.innerHTML = '<form method="dialog"><h2>For grown-ups</h2>' +
-    '<label for="gatein">What is ' + a + ' + ' + b + '?</label>' +
-    '<input id="gatein" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" autofocus>' +
-    '<div class="row"><button type="button" class="plain" id="gateno">Cancel</button><button class="big" value="ok">OK</button></div></form>';
+  dlg.className = "dlg";
+  dlg.innerHTML = '<form method="dialog"><h2>Who’s quizzing?</h2>' +
+    '<p class="muted">Your name shows next to your quizzes, so the other grown-ups can see who practised.</p>' +
+    '<input class="field" id="namein" maxlength="30" autocomplete="off" enterkeyhint="done" placeholder="Like Mom or Grandpa Joe" aria-label="Your name" autofocus>' +
+    '<div class="row"><button type="button" class="plain" id="nameno">Cancel</button><button class="big" value="ok">OK</button></div></form>';
   document.body.appendChild(dlg);
-  dlg.querySelector("#gateno").addEventListener("click", () => dlg.close());
+  dlg.querySelector("#nameno").addEventListener("click", () => dlg.close());
   dlg.addEventListener("close", () => {
-    const answer = dlg.querySelector("input").value.trim();
-    const pass = dlg.returnValue === "ok" && /^\d+$/.test(answer) && Number(answer) === a + b;
+    const name = dlg.querySelector("input").value.trim();
     dlg.remove();
-    if (pass) onPass();
+    if (dlg.returnValue === "ok" && name && local) { local.me = name; persist(); then(); }
   });
   dlg.showModal();
 }
 function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); }
 function render() {
-  if (screen === "practice" && session) renderPractice();
+  if (!local) renderWelcome();
+  else if (screen === "quiz" && session) renderQuiz();
   else if (screen === "done" && session) renderDone();
-  else if (screen === "grownups" && grownUp) renderGrown();
+  else if (screen === "settings") renderSettings();
   else { screen = "home"; renderHome(); }
   window.scrollTo(0, 0);
 }
+/* After a sync brought something new. Settings isn't redrawn while someone is typing in it. */
+function redraw() {
+  const typing = document.activeElement && document.activeElement.tagName === "INPUT";
+  if (screen === "home") renderHome();
+  else if (screen === "settings" && !typing) renderSettings();
+  else showSyncLine();
+}
+
+const joinHash = location.hash.match(/join=([0-9A-Za-z-]+)/);
+if (joinHash) history.replaceState(null, "", location.pathname + location.search);
+if (local) persist(); // keeps what loadLocal() brought over from the app before the answer log
 render();
 if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
-syncNow();
+if (joinHash) join(readCode(joinHash[1])).finally(() => syncNow());
+else syncNow();
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") syncNow();
-  else if (sync && sync.dirty) syncNow(true);
+  else if (local && (local.dirty || unsent().length)) syncNow(true);
 });
 window.addEventListener("online", () => syncNow());
 })();
