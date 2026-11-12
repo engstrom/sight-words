@@ -35,6 +35,9 @@
   --line: #DCE3EE;
   --tile-new: #E7EBF2;
   --tile-learn: #F7D774;
+  --tile-l1: #F6E6AE;
+  --tile-l2: #F0CB55;
+  --tile-l3: #D29E12;
   --tile-known: #57B97A;
   --shadow: 0 2px 0 #DCE3EE;
   color-scheme: light;
@@ -46,6 +49,7 @@
     --leaf: #4CC077; --leaf-edge: #2E8A50; --on-leaf: #0B2615;
     --miss: #F07167; --miss-edge: #B4483F; --on-miss: #2A0B08; --line: #33405A;
     --tile-new: #2E3A50; --tile-learn: #C9A63E; --tile-known: #3E9C61;
+    --tile-l1: #6E6232; --tile-l2: #A88C34; --tile-l3: #E2BE4A;
     --shadow: 0 2px 0 #121926; color-scheme: dark;
   }
 }
@@ -55,6 +59,7 @@
   --leaf: #4CC077; --leaf-edge: #2E8A50; --on-leaf: #0B2615;
   --miss: #F07167; --miss-edge: #B4483F; --on-miss: #2A0B08; --line: #33405A;
   --tile-new: #2E3A50; --tile-learn: #C9A63E; --tile-known: #3E9C61;
+  --tile-l1: #6E6232; --tile-l2: #A88C34; --tile-l3: #E2BE4A;
   --shadow: 0 2px 0 #121926; color-scheme: dark;
 }
 :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -156,7 +161,10 @@ p { margin: 0 0 10px; }
 .lead { font-size: 20px; font-weight: 700; }
 .tiles { display: grid; grid-template-columns: repeat(25, 1fr); gap: 3px; margin: 10px 0 6px; }
 .tiles b { aspect-ratio: 1; border-radius: 3px; background: var(--tile-new); }
-.tiles b.l { background: var(--tile-learn); }
+/* Learning words get one shade per box, so tiles change as a word nears Known */
+.tiles b.l1 { background: var(--tile-l1); }
+.tiles b.l2 { background: var(--tile-l2); }
+.tiles b.l3 { background: var(--tile-l3); }
 .tiles b.k { background: var(--tile-known); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--ink-soft); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
@@ -640,10 +648,17 @@ function wordSheet(word, opts) {
     (opts.verdict ? '<span class="verdict ' + opts.state + '">' + opts.verdict + '</span>' : "") +
     '<span class="' + cls + '"><span class="ruler" aria-hidden="true"><i class="top"></i><i class="mid"></i><i class="base"></i></span><span class="word-text">' + esc(word) + '</span></span></div>';
 }
+/* A word's tile: n (not started), l1-l3 (its box while learning) or k (known) */
+function stage(w) { const s = status(w); return s === "l" ? "l" + w.b : s; }
 function counts() {
   let n = 0, l = 0, k = 0;
   local.doc.order.forEach(w => { const s = status(cur.words[w]); if (s === "k") k++; else if (s === "l") l++; else n++; });
   return { n, l, k, total: local.doc.order.length };
+}
+function stageCounts() {
+  const c = { n: 0, l1: 0, l2: 0, l3: 0, k: 0 };
+  local.doc.order.forEach(w => { c[stage(cur.words[w])]++; });
+  return c;
 }
 /* Quizzes so far, newest first: one line per grown-up per day */
 function quizLog() {
@@ -693,7 +708,8 @@ function renderHome() {
   const p = plan();
   const total = p.reviews.length + p.fresh.length;
   const c = counts();
-  const tiles = local.doc.order.map(w => '<b class="' + status(cur.words[w]) + '" title="' + esc(w) + '"></b>').join("");
+  const sc = stageCounts();
+  const tiles = local.doc.order.map(w => '<b class="' + stage(cur.words[w]) + '" title="' + esc(w) + '"></b>').join("");
   let planText, cta;
   if (total) {
     planText = esc(kid()) + " has " + plural(total, "word", "words") + " to read today" +
@@ -710,7 +726,7 @@ function renderHome() {
     '<p class="center lead">' + planText + '</p>' + cta +
     '<h2>' + c.k + ' of ' + c.total + ' words known</h2>' +
     '<div class="tiles" aria-hidden="true">' + tiles + '</div>' +
-    '<div class="legend"><span><i style="background:var(--tile-known)"></i>Known (' + c.k + ')</span><span><i style="background:var(--tile-learn)"></i>Learning (' + c.l + ')</span><span><i style="background:var(--tile-new)"></i>Not started (' + c.n + ')</span></div>' +
+    '<div class="legend"><span><i style="background:var(--tile-known)"></i>Known (' + sc.k + ')</span><span><i style="background:var(--tile-l3)"></i>Almost (' + sc.l3 + ')</span><span><i style="background:var(--tile-l2)"></i>Halfway (' + sc.l2 + ')</span><span><i style="background:var(--tile-l1)"></i>Just started (' + sc.l1 + ')</span><span><i style="background:var(--tile-new)"></i>Not started (' + sc.n + ')</span></div>' +
     (log ? '<h2>Recent quizzes</h2><ul class="log">' + log + '</ul>' : "") +
     (grownUps().length < 2 ? '<h2>Quiz together</h2><p class="muted">Send the share link to other grown-ups so they can quiz ' + esc(kid()) + ' too. Everyone sees the same progress.</p><button class="plain" id="invite">Share with a grown-up</button>' : "") +
     '<p class="muted center" id="syncmsg" role="status" style="margin-top:22px;font-size:15px">' + esc(syncLine()) + '</p>';
